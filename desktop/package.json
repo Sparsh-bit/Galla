@@ -1,0 +1,27 @@
+{
+  "name": "galla-desktop",
+  "productName": "Galla",
+  "version": "0.1.0",
+  "description": "Galla inventory management: desktop app for macOS and Windows",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac dmg zip",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist": "electron-builder --mac --win"
+  },
+  "devDependencies": {
+    "electron": "^36.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "app.galla.desktop",
+    "productName": "Galla",
+    "files": ["main.js", "preload.js", "setup.html", "build/icon.png"],
+    "directories": { "buildResources": "build", "output": "dist" },
+    "mac": { "category": "public.app-category.business", "target": ["dmg", "zip"] },
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

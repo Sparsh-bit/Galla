@@ -39,7 +39,7 @@ test("blank variables (as hosting dashboards save them) count as unset", async (
   const { env } = await import("@/env");
   expect(env.RESEND_API_KEY).toBeUndefined();
   expect(env.UPLOAD_DIR).toBe("./uploads");
-  expect(env.MAIL_FROM).toContain("StockPilot");
+  expect(env.MAIL_FROM).toContain("Galla");
   expect(env.APP_URL).toBe("https://shop.up.railway.app");
   vi.unstubAllEnvs();
 });

@@ -10,7 +10,7 @@ IP="${LAN_IP:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/
 mkdir -p .data/certs
 CERT=.data/certs/dev.pem KEY=.data/certs/dev-key.pem
 if [ ! -f "$CERT" ] || ! openssl x509 -in "$CERT" -noout -text | grep -q "IP Address:$IP"; then
-  openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=StockPilot dev" \
+  openssl req -x509 -newkey rsa:2048 -nodes -days 365 -subj "/CN=Galla dev" \
     -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$IP" -keyout "$KEY" -out "$CERT" 2>/dev/null
 fi
 [ -f .data/dev-secret ] || openssl rand -base64 48 > .data/dev-secret

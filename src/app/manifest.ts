@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "StockPilot — Inventory & POS",
-    short_name: "StockPilot",
+    name: "Galla — Inventory & POS",
+    short_name: "Galla",
     description: "Inventory, billing and point of sale for every kind of business.",
     start_url: "/pos",
     display: "standalone",

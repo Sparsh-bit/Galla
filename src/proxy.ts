@@ -25,7 +25,7 @@ export function proxy(request: NextRequest) {
     "font-src 'self' data:",
     "media-src 'self' blob:",
     // print-bridge runs on the shop PC; Chrome allows https -> http://127.0.0.1
-    "connect-src 'self' http://127.0.0.1:9123 http://localhost:9123",
+    "connect-src 'self' http://127.0.0.1:* http://localhost:*",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

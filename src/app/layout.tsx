@@ -11,10 +11,10 @@ const sans = Inter({ variable: "--font-sans", subsets: ["latin"], display: "swap
 const mono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "StockPilot — Inventory & POS", template: "%s · StockPilot" },
+  title: { default: "Galla — Inventory & POS", template: "%s · Galla" },
   description: "Inventory, billing and point of sale for every kind of business. Works with barcode scanners, receipt printers and your phone camera.",
-  applicationName: "StockPilot",
-  appleWebApp: { capable: true, title: "StockPilot", statusBarStyle: "default" },
+  applicationName: "Galla",
+  appleWebApp: { capable: true, title: "Galla", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

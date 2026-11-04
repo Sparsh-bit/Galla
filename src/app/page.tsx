@@ -10,7 +10,7 @@ import { LandingMotion } from "@/components/landing/landing-motion";
 import { GlowingCard, GlowingCards } from "@/components/lightswind/glowing-cards";
 
 export const metadata: Metadata = {
-  title: "StockPilot — Make every day in business run smoother",
+  title: "Galla — Make every day in business run smoother",
   description: "A calm, capable workspace for inventory, billing and point of sale. Made for the people who keep business moving.",
 };
 
@@ -33,7 +33,7 @@ export default async function HomePage() {
       </div>
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6">
-          <Link href="/" aria-label="StockPilot home" className="rounded-lg"><Logo /></Link>
+          <Link href="/" aria-label="Galla home" className="rounded-lg"><Logo /></Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">What you can do</a>
             <a href="#workflow" className="transition-colors hover:text-foreground">Made for the day-to-day</a>
@@ -75,7 +75,7 @@ export default async function HomePage() {
                 <div className="overflow-hidden rounded-[1.1rem] border border-slate-200/80 bg-[#f8f9fc] sm:rounded-[1.4rem]">
                   <div className="flex h-12 items-center justify-between border-b border-slate-200/70 bg-white px-4 sm:px-5">
                     <div className="flex items-center gap-2"><span className="size-2 rounded-full bg-[#88c6a9]" /><span className="size-2 rounded-full bg-[#f1c879]" /><span className="size-2 rounded-full bg-[#e99e9e]" /></div>
-                    <span className="rounded-md bg-slate-50 px-3 py-1 text-[10px] font-medium text-slate-400">stockpilot.app / overview</span>
+                    <span className="rounded-md bg-slate-50 px-3 py-1 text-[10px] font-medium text-slate-400">galla.app / overview</span>
                     <span className="grid size-7 place-items-center rounded-full bg-[#edf1ff] text-[10px] font-bold text-primary">SP</span>
                   </div>
                   <div className="grid min-h-[340px] grid-cols-[48px_1fr] sm:min-h-[385px] sm:grid-cols-[62px_1fr]">
@@ -115,7 +115,7 @@ export default async function HomePage() {
         <section id="workflow" className="mx-auto max-w-7xl scroll-mt-24 px-4 pb-20 sm:px-6 sm:pb-28">
           <div className="workflow-panel relative overflow-hidden rounded-[1.7rem] border border-primary/10 px-6 py-10 sm:rounded-[2rem] sm:px-12 sm:py-14 lg:px-16">
             <div className="relative z-10 grid items-center gap-10 lg:grid-cols-[1fr_auto]">
-              <div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Built around your workflow</p><h2 className="mt-4 text-balance text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">Your counter moves fast. Your software should keep up.</h2><p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Plug in a barcode scanner and receipt printer, invite your team, and use StockPilot wherever the work takes you.</p></div>
+              <div className="max-w-2xl"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Built around your workflow</p><h2 className="mt-4 text-balance text-3xl font-semibold leading-tight tracking-[-0.04em] sm:text-4xl">Your counter moves fast. Your software should keep up.</h2><p className="mt-4 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">Plug in a barcode scanner and receipt printer, invite your team, and use Galla wherever the work takes you.</p></div>
               <Button asChild size="lg" className="h-12 rounded-full px-6"><Link href="/sign-up">Get your workspace <ArrowRight className="ml-1 size-4" /></Link></Button>
             </div>
             <div className="relative z-10 mt-9 flex flex-wrap gap-x-7 gap-y-3 border-t border-primary/10 pt-6 text-xs font-medium text-muted-foreground"><span className="inline-flex items-center gap-2"><Barcode className="size-4 text-primary" /> Scanner friendly</span><span className="inline-flex items-center gap-2"><Printer className="size-4 text-primary" /> Printer ready</span><span className="inline-flex items-center gap-2"><Smartphone className="size-4 text-primary" /> Works on your phone</span></div>
@@ -123,7 +123,7 @@ export default async function HomePage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-border/70"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6"><Logo /><span>© {new Date().getFullYear()} StockPilot. Made for the people who keep business moving.</span></div></footer>
+      <footer className="border-t border-border/70"><div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6"><Logo /><span>© {new Date().getFullYear()} Galla. Made for the people who keep business moving.</span></div></footer>
       <LandingMotion />
     </div>
   );

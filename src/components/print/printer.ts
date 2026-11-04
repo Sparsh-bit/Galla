@@ -1,8 +1,9 @@
 "use client";
 import { useSyncExternalStore } from "react";
+import { toast } from "sonner";
 // Per-device printer setup. Lives in localStorage because each counter PC/phone has its own printer.
 
-export type Transport = "browser" | "serial" | "usb" | "bluetooth" | "bridge";
+export type Transport = "browser" | "system" | "serial" | "usb" | "bluetooth" | "bridge";
 
 export interface PrinterProfile {
   transport: Transport;
@@ -13,10 +14,15 @@ export interface PrinterProfile {
   autoPrint: boolean;
   openDrawer: boolean;
   invoiceFormat: "thermal" | "a4";
+  /** Galla desktop only: OS printer name used by the "system" transport. */
+  systemPrinter: string;
+  /** Which paired USB/serial/Bluetooth device to use (vendor:product or BLE id), and its label. */
+  deviceKey: string;
+  deviceName: string;
 }
 
 const KEY = "stockpilot.printer";
-export const DEFAULT_PROFILE: PrinterProfile = { transport: "browser", width: 80, baudRate: 9600, bridgeUrl: "http://127.0.0.1:9123", bridgeKey: "", autoPrint: true, openDrawer: false, invoiceFormat: "thermal" };
+export const DEFAULT_PROFILE: PrinterProfile = { transport: "browser", width: 80, baudRate: 9600, bridgeUrl: "http://127.0.0.1:9123", bridgeKey: "", autoPrint: true, openDrawer: false, invoiceFormat: "thermal", systemPrinter: "", deviceKey: "", deviceName: "" };
 
 export function loadProfile(): PrinterProfile {
   try {
@@ -59,7 +65,18 @@ export function usePrinterProfile(): PrinterProfile {
   return useSyncExternalStore(subscribe, snapshot, () => DEFAULT_PROFILE);
 }
 
-const NO_SUPPORT = { serial: false, usb: false, bluetooth: false };
+export interface DesktopPrinter { name: string; displayName: string; isDefault: boolean }
+export interface GallaDesktop {
+  platform: string;
+  version: string;
+  listPrinters(): Promise<DesktopPrinter[]>;
+  printUrl(url: string, o: { printer: string; width: number }): Promise<void>;
+  printHtml(html: string, o: { printer: string; width: number }): Promise<void>;
+}
+/** The Galla desktop shell (Electron) injects this; it is absent in a normal browser. */
+export const desktopApp = (): GallaDesktop | null => (typeof window === "undefined" ? null : ((window as unknown as { gallaDesktop?: GallaDesktop }).gallaDesktop ?? null));
+
+const NO_SUPPORT = { serial: false, usb: false, bluetooth: false, desktop: false };
 let capsCache: typeof NO_SUPPORT | null = null;
 /** Which direct-printing browser APIs exist here (stable object for useSyncExternalStore). */
 export function usePrinterSupport() {
@@ -74,20 +91,23 @@ export const supports = () => ({
   serial: typeof navigator !== "undefined" && "serial" in navigator,
   usb: typeof navigator !== "undefined" && "usb" in navigator,
   bluetooth: typeof navigator !== "undefined" && "bluetooth" in navigator,
+  desktop: !!desktopApp(),
 });
 
 /* ----- minimal Web Serial / WebUSB / Web Bluetooth typings (not in lib.dom yet) ----- */
-interface SerialPortLike { open(o: { baudRate: number }): Promise<void>; close(): Promise<void>; writable: WritableStream<Uint8Array> | null; readable: unknown }
+interface SerialPortLike { getInfo(): { usbVendorId?: number; usbProductId?: number }; open(o: { baudRate: number }): Promise<void>; close(): Promise<void>; writable: WritableStream<Uint8Array> | null; readable: unknown }
 interface USBEndpointLike { direction: "in" | "out"; type: string; endpointNumber: number }
 interface USBDeviceLike {
+  vendorId: number; productId: number; productName?: string;
   opened: boolean; configuration: { interfaces: { interfaceNumber: number; alternate: { endpoints: USBEndpointLike[] } }[] } | null;
   open(): Promise<void>; selectConfiguration(n: number): Promise<void>; claimInterface(n: number): Promise<void>; transferOut(ep: number, data: Uint8Array): Promise<unknown>;
 }
 interface BTCharLike { properties: { write: boolean; writeWithoutResponse: boolean }; writeValueWithoutResponse?(d: Uint8Array): Promise<void>; writeValue(d: Uint8Array): Promise<void> }
+interface BTDeviceLike { id: string; name?: string; gatt?: { connect(): Promise<{ getPrimaryServices(): Promise<{ getCharacteristics(): Promise<BTCharLike[]> }[]> }> } }
 type Nav = Navigator & {
   serial?: { requestPort(): Promise<SerialPortLike>; getPorts(): Promise<SerialPortLike[]> };
   usb?: { requestDevice(o: { filters: object[] }): Promise<USBDeviceLike>; getDevices(): Promise<USBDeviceLike[]> };
-  bluetooth?: { requestDevice(o: object): Promise<{ gatt?: { connect(): Promise<{ getPrimaryServices(): Promise<{ getCharacteristics(): Promise<BTCharLike[]> }[]> }> } }> };
+  bluetooth?: { requestDevice(o: object): Promise<BTDeviceLike>; getDevices?(): Promise<BTDeviceLike[]> };
 };
 const nav = () => navigator as Nav;
 
@@ -96,25 +116,32 @@ const BLE_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499
 
 let btChar: BTCharLike | null = null;
 
-/** Ask the user to choose a device (must run from a click). */
-export async function pairPrinter(t: Transport): Promise<string> {
+const hex = (n: number | undefined) => (n ?? 0).toString(16).padStart(4, "0");
+const portKey = (p: SerialPortLike) => `${hex(p.getInfo().usbVendorId)}:${hex(p.getInfo().usbProductId)}`;
+const usbKey = (d: USBDeviceLike) => `${hex(d.vendorId)}:${hex(d.productId)}`;
+/** The paired device the profile points at; falls back to the only/first one. */
+const chosen = <T,>(list: T[] | undefined, key: string, keyOf: (x: T) => string): T | undefined => list?.find((x) => keyOf(x) === key) ?? list?.[0];
+
+/** Ask the user to choose a device (must run from a click). Returns what to remember about it. */
+export async function pairPrinter(t: Transport): Promise<{ message: string; deviceKey: string; deviceName: string }> {
   if (t === "serial") {
-    await nav().serial!.requestPort();
-    return "Printer port selected";
+    const port = await nav().serial!.requestPort();
+    const key = portKey(port);
+    return { message: "Printer port selected", deviceKey: key, deviceName: `Serial device ${key}` };
   }
   if (t === "usb") {
-    await nav().usb!.requestDevice({ filters: [] });
-    return "USB printer selected";
+    const dev = await nav().usb!.requestDevice({ filters: [] });
+    return { message: "USB printer selected", deviceKey: usbKey(dev), deviceName: dev.productName || `USB device ${usbKey(dev)}` };
   }
   if (t === "bluetooth") {
     const dev = await nav().bluetooth!.requestDevice({ acceptAllDevices: true, optionalServices: BLE_SERVICES });
     btChar = await findBtCharacteristic(dev);
-    return "Bluetooth printer connected";
+    return { message: "Bluetooth printer connected", deviceKey: dev.id, deviceName: dev.name || "Bluetooth printer" };
   }
-  return "Ready";
+  return { message: "Ready", deviceKey: "", deviceName: "" };
 }
 
-async function findBtCharacteristic(dev: Awaited<ReturnType<NonNullable<Nav["bluetooth"]>["requestDevice"]>>) {
+async function findBtCharacteristic(dev: BTDeviceLike) {
   const server = await dev.gatt!.connect();
   for (const svc of await server.getPrimaryServices()) {
     for (const c of await svc.getCharacteristics()) if (c.properties.write || c.properties.writeWithoutResponse) return c;
@@ -122,10 +149,16 @@ async function findBtCharacteristic(dev: Awaited<ReturnType<NonNullable<Nav["blu
   throw new Error("This Bluetooth device has no printable channel");
 }
 
+/** Browsers forget Bluetooth printers on reload; reconnect to the remembered one where the browser allows it. */
+async function reconnectBluetooth(key: string) {
+  const dev = (await nav().bluetooth?.getDevices?.())?.find((d) => d.id === key);
+  if (dev) btChar = await findBtCharacteristic(dev).catch(() => null);
+}
+
 /** Sends raw ESC/POS bytes. Throws with a human message on failure. */
 export async function sendRaw(p: PrinterProfile, data: Uint8Array) {
   if (p.transport === "serial") {
-    const port = (await nav().serial?.getPorts())?.[0];
+    const port = chosen(await nav().serial?.getPorts(), p.deviceKey, portKey);
     if (!port) throw new Error("No printer paired. Open Settings → Printer & scanner.");
     await port.open({ baudRate: p.baudRate }).catch((e: DOMException) => {
       if (e.name !== "InvalidStateError") throw e; // already open
@@ -140,7 +173,7 @@ export async function sendRaw(p: PrinterProfile, data: Uint8Array) {
     return;
   }
   if (p.transport === "usb") {
-    const dev = (await nav().usb?.getDevices())?.[0];
+    const dev = chosen(await nav().usb?.getDevices(), p.deviceKey, usbKey);
     if (!dev) throw new Error("No USB printer paired. Open Settings → Printer & scanner.");
     if (!dev.opened) await dev.open();
     if (!dev.configuration) await dev.selectConfiguration(1);
@@ -152,11 +185,18 @@ export async function sendRaw(p: PrinterProfile, data: Uint8Array) {
     return;
   }
   if (p.transport === "bluetooth") {
+    if (!btChar && p.deviceKey) await reconnectBluetooth(p.deviceKey);
     if (!btChar) throw new Error("Reconnect the Bluetooth printer in Settings → Printer & scanner (browsers forget it on reload).");
-    for (let i = 0; i < data.length; i += 180) {
-      const chunk = data.slice(i, i + 180);
-      if (btChar.properties.writeWithoutResponse && btChar.writeValueWithoutResponse) await btChar.writeValueWithoutResponse(chunk);
-      else await btChar.writeValue(chunk);
+    const ch = btChar;
+    try {
+      for (let i = 0; i < data.length; i += 180) {
+        const chunk = data.slice(i, i + 180);
+        if (ch.properties.writeWithoutResponse && ch.writeValueWithoutResponse) await ch.writeValueWithoutResponse(chunk);
+        else await ch.writeValue(chunk);
+      }
+    } catch (e) {
+      btChar = null; // printer went to sleep or out of range: reconnect on the next print
+      throw new Error(`Bluetooth printer not reachable (${(e as Error).message}). Switch it on and try again.`);
     }
     return;
   }
@@ -165,11 +205,18 @@ export async function sendRaw(p: PrinterProfile, data: Uint8Array) {
     if (!res.ok) throw new Error(`Print bridge error: ${await res.text().catch(() => res.status)}`);
     return;
   }
-  throw new Error("Browser printing doesn't send raw data");
+  throw new Error("This printer mode prints pages, not raw receipt data. Choose USB, Serial, Bluetooth or Network for the cash drawer.");
 }
 
-/** Prints a page (receipt/invoice) through the browser's print dialog using a hidden iframe. */
+/** Prints a page (receipt/invoice): silently to the chosen OS printer in the Galla desktop app, else the browser print dialog. */
 export function browserPrint(url: string) {
+  const p = loadProfile();
+  const desk = desktopApp();
+  if (desk && p.transport === "system" && p.systemPrinter) {
+    const quiet = url.replace(/([?&])auto=1&?/, "$1").replace(/[?&]$/, "");
+    desk.printUrl(quiet, { printer: p.systemPrinter, width: p.width }).catch((e: Error) => toast.error(e.message || "Printer not reachable"));
+    return;
+  }
   const old = document.getElementById("print-frame");
   old?.remove();
   const f = document.createElement("iframe");

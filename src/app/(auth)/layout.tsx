@@ -33,7 +33,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             ))}
           </ul>
         </div>
-        <p className="relative text-sm text-primary-foreground/60">© {new Date().getFullYear()} StockPilot</p>
+        <p className="relative text-sm text-primary-foreground/60">© {new Date().getFullYear()} Galla</p>
       </aside>
       <main className="flex flex-col justify-center px-4 py-10 sm:px-10">
         <div className="mx-auto w-full max-w-sm">

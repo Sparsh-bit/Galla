@@ -49,3 +49,7 @@ next-env.d.ts
 
 # macOS AppleDouble files (exFAT volumes)
 ._*
+
+# desktop app
+/desktop/node_modules/
+/desktop/dist/

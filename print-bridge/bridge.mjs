@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// StockPilot print bridge — forwards ESC/POS bytes from the browser to a network (LAN) receipt
+// Galla print bridge — forwards ESC/POS bytes from the browser to a network (LAN) receipt
 // printer on port 9100. Run it on any always-on computer in the shop. Zero dependencies.
 //
 //   node bridge.mjs --printer 192.168.1.50 --key "long-random-secret" --origin https://your-stockpilot-domain
 //
-// Then in StockPilot: Settings → Printer & scanner → Network (LAN), enter the same key.
+// Then in Galla: Settings → Printer & scanner → Network (LAN), enter the same key.
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import net from "node:net";
@@ -88,6 +88,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(Number(opt.port), opt.host, () => {
-  console.log(`StockPilot print bridge on http://${opt.host}:${opt.port} → printer ${opt.printer}:${opt["printer-port"]}`);
-  if (!origins.size) console.log("Tip: pass --origin https://your-app-domain to only accept requests from your StockPilot site.");
+  console.log(`Galla print bridge on http://${opt.host}:${opt.port} → printer ${opt.printer}:${opt["printer-port"]}`);
+  if (!origins.size) console.log("Tip: pass --origin https://your-app-domain to only accept requests from your Galla site.");
 });

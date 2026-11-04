@@ -1,4 +1,4 @@
-// StockPilot service worker: lets the POS open and sell without internet.
+// Galla service worker: lets the POS open and sell without internet.
 // Only the POS page and static build assets are cached; all data requests stay network-only.
 const VERSION = "sp-v1";
 const STATIC = `${VERSION}-static`;
