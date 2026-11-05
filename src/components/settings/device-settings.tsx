@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Bluetooth, Cable, Laptop, CheckCircle2, Globe, MonitorSmartphone, Printer, ScanBarcode, Usb } from "lucide-react";
+import { useState } from "react";
+import { Bluetooth, Cable, Laptop, Plug, CheckCircle2, Globe, MonitorSmartphone, Printer, ScanBarcode, Usb } from "lucide-react";
 import { toast } from "sonner";
 import { EscPos } from "@/lib/escpos";
 import { useOrg } from "@/components/app/org-context";
 import { kickDrawer } from "@/components/print/use-print-sale";
-import { desktopApp, pairPrinter, saveProfile, sendRaw, usePrinterProfile, usePrinterSupport, type DesktopPrinter, type PrinterProfile, type Transport } from "@/components/print/printer";
+import { desktopApp, nav, pairPrinter, portKey, saveProfile, sendRaw, usePrinterProfile, usePrinterSupport, type PrinterProfile, type Transport } from "@/components/print/printer";
+import { useConnectedDevices } from "@/components/print/device-bridge";
 import { CameraScanButton } from "@/components/scanner/scan-tools";
 import { useScanner } from "@/components/scanner/use-scanner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -67,16 +68,67 @@ export function DeviceSettings() {
     }
   }
 
-  const [printers, setPrinters] = useState<DesktopPrinter[]>([]);
-  useEffect(() => {
-    desktopApp()?.listPrinters().then(setPrinters).catch(() => setPrinters([]));
-  }, []);
+  const devices = useConnectedDevices();
+  const printers = devices.printers;
+
+  async function connectSerialScanner() {
+    try {
+      const port = await nav().serial!.requestPort();
+      update({ scannerPort: portKey(port) });
+      toast.success("Serial scanner connected. Scan a barcode to test.");
+    } catch (e) {
+      if ((e as DOMException).name !== "NotFoundError") toast.error((e as Error).message || "Could not connect");
+    }
+  }
   const options = caps.desktop ? [SYSTEM, ...TRANSPORTS] : TRANSPORTS;
 
   const unsupported = p.transport !== "browser" && p.transport !== "bridge" && !(p.transport === "system" ? caps.desktop : caps[p.transport]);
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Plug className="size-4" /> Connected devices</CardTitle>
+          <CardDescription>What this computer can use right now. The list updates when you plug a device in or out.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="divide-y rounded-lg border" aria-label="Connected devices">
+            {printers.map((x) => {
+              const inUse = p.transport === "system" && p.systemPrinter === x.name;
+              return (
+                <li key={x.name} className="flex items-center gap-3 px-4 py-3 text-sm">
+                  <Printer className="size-4 shrink-0 text-brand-deep" />
+                  <span className="min-w-0 flex-1 truncate">{x.displayName || x.name}{x.isDefault && <span className="ml-2 text-xs text-muted-foreground">system default</span>}</span>
+                  {inUse ? <span className="inline-flex items-center gap-1 text-xs font-medium text-success"><CheckCircle2 className="size-3.5" /> In use</span> : <Button size="sm" variant="outline" onClick={() => update({ transport: "system", systemPrinter: x.name })}>Use for bills</Button>}
+                </li>
+              );
+            })}
+            {devices.usb.map((d) => (
+              <li key={`usb-${d.key}`} className="flex items-center gap-3 px-4 py-3 text-sm">
+                <Usb className="size-4 shrink-0 text-brand-deep" />
+                <span className="min-w-0 flex-1 truncate">{d.name}</span>
+                {p.transport === "usb" && p.deviceKey === d.key ? <span className="text-xs font-medium text-success">Receipt printer</span> : <Button size="sm" variant="outline" onClick={() => update({ transport: "usb", deviceKey: d.key, deviceName: d.name })}>Use as printer</Button>}
+              </li>
+            ))}
+            {devices.serial.map((d) => (
+              <li key={`serial-${d.key}`} className="flex items-center gap-3 px-4 py-3 text-sm">
+                <Cable className="size-4 shrink-0 text-brand-deep" />
+                <span className="min-w-0 flex-1 truncate">{d.name}</span>
+                <span className="text-xs text-muted-foreground">{p.scannerPort === d.key ? "Barcode scanner" : p.transport === "serial" && p.deviceKey === d.key ? "Receipt printer" : "Available"}</span>
+              </li>
+            ))}
+            <li className="flex items-center gap-3 px-4 py-3 text-sm">
+              <ScanBarcode className="size-4 shrink-0 text-brand-deep" />
+              <span className="min-w-0 flex-1">USB / Bluetooth barcode scanner</span>
+              <span className={`text-xs font-medium ${lastScan ? "text-success" : "text-muted-foreground"}`}>{lastScan ? "Working" : "Detected on its first scan"}</span>
+            </li>
+            {!printers.length && !devices.usb.length && !devices.serial.length && (
+              <li className="px-4 py-3 text-xs text-muted-foreground">{caps.desktop ? "No printers installed yet. Add one in your computer's printer settings; it appears here automatically." : "Install the Galla desktop app to see every printer on this computer, or connect a USB / serial / Bluetooth printer below."}</li>
+            )}
+          </ul>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Printer className="size-4" /> Receipt printer</CardTitle>
@@ -147,6 +199,16 @@ export function DeviceSettings() {
             {lastScan ? <CheckCircle2 className="size-5 text-success" /> : <ScanBarcode className="size-5 text-muted-foreground" />}
             <span className="text-sm">{lastScan ? <>Scanner works. Read: <code className="font-mono font-semibold">{lastScan}</code></> : "Waiting for a scan…"}</span>
           </div>
+          {caps.serial && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/40 p-3">
+              <span className="flex-1 text-xs text-muted-foreground">Scanner set to <b>serial / COM</b> mode (it doesn&apos;t type like a keyboard)? Connect it here and scans work everywhere in Galla.</span>
+              {p.scannerPort ? (
+                <Button size="sm" variant="outline" onClick={() => update({ scannerPort: "" })}>Disconnect serial scanner</Button>
+              ) : (
+                <Button size="sm" variant="outline" onClick={connectSerialScanner}>Connect serial scanner…</Button>
+              )}
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <CameraScanButton onScan={(c) => setLastScan(c)} label="Test camera" />
             <p className="text-xs text-muted-foreground">No scanner? The phone or laptop camera works too, and on the POS you can pair a phone as a wireless scanner.</p>

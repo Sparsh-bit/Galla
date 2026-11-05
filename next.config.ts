@@ -2,7 +2,11 @@ import type { NextConfig } from "next";
 
 // Every app page is per-tenant and per-request, so Cache Components (which forces
 // Suspense around every session read) buys nothing here; pages render dynamically.
+// Identifies this deploy. Railway sets the git commit; local builds use the build time.
+const BUILD_ID = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) || `local-${Date.now()}`;
+
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_GALLA_BUILD: BUILD_ID },
   // Keep E2E production builds separate from a concurrent local dev server's .next directory.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   poweredByHeader: false,

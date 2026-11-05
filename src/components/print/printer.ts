@@ -19,10 +19,13 @@ export interface PrinterProfile {
   /** Which paired USB/serial/Bluetooth device to use (vendor:product or BLE id), and its label. */
   deviceKey: string;
   deviceName: string;
+  /** A barcode scanner set to serial/COM mode (vendor:product of its port), read directly; "" = none. */
+  scannerPort: string;
+  scannerBaud: number;
 }
 
 const KEY = "stockpilot.printer";
-export const DEFAULT_PROFILE: PrinterProfile = { transport: "browser", width: 80, baudRate: 9600, bridgeUrl: "http://127.0.0.1:9123", bridgeKey: "", autoPrint: true, openDrawer: false, invoiceFormat: "thermal", systemPrinter: "", deviceKey: "", deviceName: "" };
+export const DEFAULT_PROFILE: PrinterProfile = { transport: "browser", width: 80, baudRate: 9600, bridgeUrl: "http://127.0.0.1:9123", bridgeKey: "", autoPrint: true, openDrawer: false, invoiceFormat: "thermal", systemPrinter: "", deviceKey: "", deviceName: "", scannerPort: "", scannerBaud: 9600 };
 
 export function loadProfile(): PrinterProfile {
   try {
@@ -95,9 +98,9 @@ export const supports = () => ({
 });
 
 /* ----- minimal Web Serial / WebUSB / Web Bluetooth typings (not in lib.dom yet) ----- */
-interface SerialPortLike { getInfo(): { usbVendorId?: number; usbProductId?: number }; open(o: { baudRate: number }): Promise<void>; close(): Promise<void>; writable: WritableStream<Uint8Array> | null; readable: unknown }
+export interface SerialPortLike { getInfo(): { usbVendorId?: number; usbProductId?: number }; open(o: { baudRate: number }): Promise<void>; close(): Promise<void>; writable: WritableStream<Uint8Array> | null; readable: ReadableStream<Uint8Array> | null }
 interface USBEndpointLike { direction: "in" | "out"; type: string; endpointNumber: number }
-interface USBDeviceLike {
+export interface USBDeviceLike {
   vendorId: number; productId: number; productName?: string;
   opened: boolean; configuration: { interfaces: { interfaceNumber: number; alternate: { endpoints: USBEndpointLike[] } }[] } | null;
   open(): Promise<void>; selectConfiguration(n: number): Promise<void>; claimInterface(n: number): Promise<void>; transferOut(ep: number, data: Uint8Array): Promise<unknown>;
@@ -105,11 +108,11 @@ interface USBDeviceLike {
 interface BTCharLike { properties: { write: boolean; writeWithoutResponse: boolean }; writeValueWithoutResponse?(d: Uint8Array): Promise<void>; writeValue(d: Uint8Array): Promise<void> }
 interface BTDeviceLike { id: string; name?: string; gatt?: { connect(): Promise<{ getPrimaryServices(): Promise<{ getCharacteristics(): Promise<BTCharLike[]> }[]> }> } }
 type Nav = Navigator & {
-  serial?: { requestPort(): Promise<SerialPortLike>; getPorts(): Promise<SerialPortLike[]> };
-  usb?: { requestDevice(o: { filters: object[] }): Promise<USBDeviceLike>; getDevices(): Promise<USBDeviceLike[]> };
+  serial?: EventTarget & { requestPort(): Promise<SerialPortLike>; getPorts(): Promise<SerialPortLike[]> };
+  usb?: EventTarget & { requestDevice(o: { filters: object[] }): Promise<USBDeviceLike>; getDevices(): Promise<USBDeviceLike[]> };
   bluetooth?: { requestDevice(o: object): Promise<BTDeviceLike>; getDevices?(): Promise<BTDeviceLike[]> };
 };
-const nav = () => navigator as Nav;
+export const nav = () => navigator as Nav;
 
 // Common BLE thermal printer services (generic "18F0", Xprinter/Goojprt and others).
 const BLE_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499d-8c15-faa9aef0c3f2", "49535343-fe7d-4ae5-8fa9-9fafd205e455", "0000ff00-0000-1000-8000-00805f9b34fb"];
@@ -117,8 +120,8 @@ const BLE_SERVICES = ["000018f0-0000-1000-8000-00805f9b34fb", "e7810a71-73ae-499
 let btChar: BTCharLike | null = null;
 
 const hex = (n: number | undefined) => (n ?? 0).toString(16).padStart(4, "0");
-const portKey = (p: SerialPortLike) => `${hex(p.getInfo().usbVendorId)}:${hex(p.getInfo().usbProductId)}`;
-const usbKey = (d: USBDeviceLike) => `${hex(d.vendorId)}:${hex(d.productId)}`;
+export const portKey = (p: SerialPortLike) => `${hex(p.getInfo().usbVendorId)}:${hex(p.getInfo().usbProductId)}`;
+export const usbKey = (d: USBDeviceLike) => `${hex(d.vendorId)}:${hex(d.productId)}`;
 /** The paired device the profile points at; falls back to the only/first one. */
 const chosen = <T,>(list: T[] | undefined, key: string, keyOf: (x: T) => string): T | undefined => list?.find((x) => keyOf(x) === key) ?? list?.[0];
 

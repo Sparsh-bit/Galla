@@ -249,6 +249,13 @@ html.native-app :is(input, textarea, select, [contenteditable], [data-selectable
 html.native-app img { -webkit-user-drag: none; }
 html.native-app[data-platform="ios"] body, html.native-app[data-platform="android"] body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 
+/* Lite mode for low-end PCs: blur and long animations are the costliest paints, so drop them. */
+html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+html.lite .hero-orb, html.lite .preview-halo, html.lite .scan-line, html.lite .feature-glow { display: none; }
+html.lite .marquee-track, html.lite .float-y { animation: none; }
+html.lite .reveal { opacity: 1; animation: none !important; }
+html.lite [data-slot="card"], html.lite [data-slot="card"]:hover { transition: none; box-shadow: 0 1px 2px oklch(0.3 0.04 70 / 6%); }
+
 /* Galla desktop app: the window has no system title bar, so the app header is the title bar. */
 html[data-platform^="desktop-"] [data-app-header], html[data-platform^="desktop-"] [data-slot="sidebar-header"] { -webkit-app-region: drag; user-select: none; }
 html[data-platform^="desktop-"] :is(button, a, input, select, textarea, [role="button"], [role="combobox"], [data-slot="sidebar-menu-button"], [data-slot="dropdown-menu-trigger"]) { -webkit-app-region: no-drag; }

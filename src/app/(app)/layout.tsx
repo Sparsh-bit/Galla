@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app/app-sidebar";
 import { CommandMenu } from "@/components/app/command-menu";
 import { OrgProvider } from "@/components/app/org-context";
 import { RegisterServiceWorker } from "@/components/offline/register-sw";
+import { UpdateNotifier } from "@/components/app/update-notifier";
+import { DeviceBridge } from "@/components/print/device-bridge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -30,6 +32,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       }}
     >
       <RegisterServiceWorker />
+      <UpdateNotifier />
+      <DeviceBridge />
       <SidebarProvider defaultOpen={cookieStore.get("sidebar_state")?.value !== "false"}>
         <AppSidebar orgs={orgs.map((o) => ({ id: o.id, name: o.name }))} userEmail={ctx.userEmail} />
         <SidebarInset className="min-w-0">

@@ -3,6 +3,9 @@ import { useEffect, useRef } from "react";
 import { createScanDetector } from "@/lib/scan-detector";
 import { useOrg } from "@/components/app/org-context";
 
+/** Window event carrying a code read from a serial-mode scanner. */
+export const SCAN_EVENT = "galla:scan";
+
 const isEditable = (el: Element | null): el is HTMLInputElement | HTMLTextAreaElement =>
   !!el && (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && !el.readOnly;
 
@@ -51,10 +54,24 @@ export function useScanner(onScan: (code: string) => void, enabled = true) {
       }
       if (e.key.length === 1) flushTimer = setTimeout(() => detector.flush(), scanner.interKeyMs * 3);
     };
+    // Serial/COM-mode scanners are read by <DeviceBridge> and arrive as this event.
+    // Like a keyboard scanner, a focused barcode field keeps the code instead of triggering a scan.
+    const onSerial = (e: Event) => {
+      const code = (e as CustomEvent<string>).detail;
+      const el = document.activeElement;
+      if (isEditable(el) && el.closest("[data-scan-field]")) {
+        Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value")?.set?.call(el, code);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        return;
+      }
+      cb.current(code);
+    };
     window.addEventListener("keydown", onKey, true);
+    window.addEventListener(SCAN_EVENT, onSerial);
     return () => {
       clearTimeout(flushTimer);
       window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener(SCAN_EVENT, onSerial);
     };
   }, [enabled, scanner.interKeyMs, scanner.minLength]);
 }

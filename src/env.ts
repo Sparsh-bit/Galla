@@ -24,6 +24,8 @@ const schema = z.object({
   ANDROID_APP_URL: z.string().optional(),
   // Where "Request access" sends people (the Concilio Solutions booking page).
   REQUEST_ACCESS_URL: z.url().optional(),
+  // Desktop apps older than this must update before use (e.g. "0.2.0"); unset = any version works.
+  MIN_DESKTOP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {
   path: ["MAIL_FROM"],
   message: "set MAIL_FROM to a sender on a domain verified in Resend, e.g. Galla <no-reply@yourdomain.com>",
