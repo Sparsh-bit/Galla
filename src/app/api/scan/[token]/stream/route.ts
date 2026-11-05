@@ -34,7 +34,7 @@ export async function GET(req: Request, { params }: RouteContext<"/api/scan/[tok
           if (s.seq > seq) {
             const fresh = s.events.slice(-(s.seq - seq));
             seq = s.seq;
-            for (const e of fresh) send("scan", { code: e.code });
+            for (const e of fresh) send("scan", { code: e.code, target: e.target ?? "here" });
           }
         } catch {
           close();

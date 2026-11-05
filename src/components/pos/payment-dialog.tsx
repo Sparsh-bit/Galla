@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/components/app/i18n-provider";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -43,6 +44,7 @@ export function PaymentDialog({
   open: boolean; onOpenChange: (o: boolean) => void; total: number; hasCustomer: boolean; upiId: string; orgName: string; pending: boolean;
   kind: "receipt" | "tax_invoice"; onKindChange: (k: "receipt" | "tax_invoice") => void; onPay: (tenders: Tender[]) => void;
 }) {
+  const t = useT();
   const org = useOrg();
   // The POS remounts this dialog (via `key`) each time it opens, so initial state is fresh.
   const [rows, setRows] = useState<{ method: Method; amount: string; reference: string }[]>(() => [{ method: "cash", amount: fromMinor(total), reference: "" }]);
@@ -83,12 +85,12 @@ export function PaymentDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg" onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey || (e.target as HTMLElement).tagName !== "BUTTON")) { e.preventDefault(); submit(); } }}>
         <DialogHeader>
-          <DialogTitle>Take payment</DialogTitle>
-          <DialogDescription>Split across methods if the customer pays in parts.</DialogDescription>
+          <DialogTitle>{t("Take payment")}</DialogTitle>
+          <DialogDescription>{t("Split across methods if the customer pays in parts.")}</DialogDescription>
         </DialogHeader>
 
         <div className="rounded-xl bg-primary/5 p-4 text-center">
-          <p className="text-sm text-muted-foreground">Amount due</p>
+          <p className="text-sm text-muted-foreground">{t("Amount due")}</p>
           <p className="text-4xl font-semibold tracking-tight tabular-nums">{org.money(total)}</p>
         </div>
 
@@ -105,7 +107,7 @@ export function PaymentDialog({
               <div className="flex gap-1.5">
                 {METHODS.map((m) => (
                   <Button key={m.id} type="button" size="sm" variant={r.method === m.id ? "default" : "outline"} className="flex-1 px-1" onClick={() => setRow(i, { method: m.id })} disabled={m.id === "credit" && !hasCustomer} aria-pressed={r.method === m.id}>
-                    <m.icon /> <span className="truncate">{m.label}</span>
+                    <m.icon /> <span className="truncate">{t(m.label)}</span>
                   </Button>
                 ))}
                 {rows.length > 1 && (
@@ -116,7 +118,7 @@ export function PaymentDialog({
               </div>
               <div className="flex gap-2">
                 <div className="flex-1 space-y-1">
-                  <Label htmlFor={`amt-${i}`} className="text-xs">Amount</Label>
+                  <Label htmlFor={`amt-${i}`} className="text-xs">{t("Amount")}</Label>
                   <Input id={`amt-${i}`} inputMode="decimal" value={r.amount} onChange={(e) => setRow(i, { amount: e.target.value })} onFocus={(e) => e.target.select()} className="h-10 text-lg tabular-nums" autoFocus={i === 0} aria-invalid={!Number.isFinite(parsed[i]) || undefined} />
                 </div>
                 {(r.method === "card" || r.method === "upi") && (
@@ -155,9 +157,9 @@ export function PaymentDialog({
 
         <div className="flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3 text-sm">
           {remaining > 0 ? (
-            <span className="text-destructive">Still due <strong className="tabular-nums">{org.money(remaining)}</strong></span>
+            <span className="text-destructive">{t("Still due")} <strong className="tabular-nums">{org.money(remaining)}</strong></span>
           ) : (
-            <span>Change to return</span>
+            <span>{t("Change to return")}</span>
           )}
           <span className="text-2xl font-semibold tabular-nums">{org.money(change)}</span>
         </div>
@@ -165,7 +167,7 @@ export function PaymentDialog({
 
         <DialogFooter>
           <Button size="lg" className="h-11 w-full text-base" disabled={invalid || pending} onClick={submit}>
-            {pending && <Spinner />} Complete sale <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
+            {pending && <Spinner />} {t("Complete sale")} <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

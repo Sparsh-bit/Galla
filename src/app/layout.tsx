@@ -3,7 +3,10 @@ import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { NativeShell } from "@/components/app/native-shell";
-import { LITE_SCRIPT, THEME_SCRIPT } from "@/lib/boot-scripts";
+import { LITE_SCRIPT, SPLASH_SCRIPT, THEME_SCRIPT } from "@/lib/boot-scripts";
+import { WelcomeSplash } from "@/components/app/welcome-splash";
+import { I18nProvider } from "@/components/app/i18n-provider";
+import { getLang } from "@/server/i18n";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -33,14 +36,18 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const lang = await getLang();
   return (
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
+    <html lang={lang} suppressHydrationWarning className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full bg-background">
         <Script id="theme" strategy="beforeInteractive" nonce={nonce}>
-          {THEME_SCRIPT + LITE_SCRIPT}
+          {THEME_SCRIPT + LITE_SCRIPT + SPLASH_SCRIPT}
         </Script>
         <NativeShell />
-        <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        <WelcomeSplash />
+        <I18nProvider lang={lang}>
+          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+        </I18nProvider>
         <Toaster richColors position="top-right" closeButton />
       </body>
     </html>
