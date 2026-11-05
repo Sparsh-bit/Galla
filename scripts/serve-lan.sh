@@ -12,6 +12,7 @@ export MONGODB_URI="${MONGODB_URI:-mongodb://127.0.0.1:27017/stockpilot?replicaS
 export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-$(cat .data/dev-secret)}"
 export APP_URL="http://$IP:${PORT:-3000}"
 export MAIL_SINK="${MAIL_SINK:-file}"
+export ALLOW_PUBLIC_SIGNUP="${ALLOW_PUBLIC_SIGNUP:-true}"
 export NEXT_DIST_DIR=.next-lan
 [ "${SKIP_BUILD:-}" = 1 ] || npx next build
 echo ""

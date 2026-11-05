@@ -21,6 +21,9 @@ export const E2E_ENV = {
   BETTER_AUTH_SECRET: secret,
   APP_URL: `http://localhost:${PORT}`,
   MAIL_SINK: "file",
+  ALLOW_PUBLIC_SIGNUP: "true", // tests create their own owners; production keeps sign-up invite-only
+  PROVIDER_ADMIN_EMAIL: "provider@galla.test",
+  PROVIDER_ADMIN_PASSWORD: "Local-Provider-Pass-2026!",
   MAIL_FILE_PATH: path.join(E2E_DATA_DIR, "mail.log"),
   UPLOAD_DIR: path.join(E2E_DATA_DIR, "uploads"),
   E2E_DATA_DIR,
