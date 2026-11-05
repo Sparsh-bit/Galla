@@ -1,6 +1,8 @@
-# Galla — Inventory & POS for any business
+# Galla — your shop’s digital cash box
 
-Multi-tenant inventory, billing and point-of-sale web app built with **Next.js 16, React 19, MongoDB (Mongoose) and Better Auth**. It works with USB/Bluetooth barcode scanners and thermal receipt printers. If a business has no hardware, it falls back to the **phone camera** for scanning and **any printer** (or a PDF) for bills.
+_Powered by [Concilio Solutions](https://concilio.solutions)._
+
+Multi-tenant inventory, billing, khata and point-of-sale web app (also a macOS and Windows desktop app in `desktop/`) built with **Next.js 16, React 19, MongoDB (Mongoose) and Better Auth**. It works with USB/Bluetooth barcode scanners and thermal receipt printers. If a business has no hardware, it falls back to the **phone camera** for scanning and **any printer** (or a PDF) for bills.
 
 ## Features
 

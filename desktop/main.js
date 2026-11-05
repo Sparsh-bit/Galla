@@ -152,6 +152,7 @@ function menu() {
       { role: "editMenu" },
       { label: "View", submenu: [{ role: "togglefullscreen" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, ...(app.isPackaged ? [] : [{ role: "toggleDevTools" }])] },
       { role: "windowMenu" },
+      { role: "help", submenu: [{ label: "Galla by Concilio Solutions", click: () => shell.openExternal("https://concilio.solutions") }, ...(mac ? [] : [{ role: "about" }])] },
     ]),
   );
 }
@@ -197,6 +198,7 @@ else {
       win.focus();
     }
   });
+  app.setAboutPanelOptions({ applicationName: "Galla", applicationVersion: app.getVersion(), copyright: "Powered by Concilio Solutions · concilio.solutions", website: "https://concilio.solutions" });
   app.whenReady().then(() => {
     registerIpc();
     setupDevices(session.defaultSession);

@@ -70,7 +70,7 @@ export default async function DashboardPage() {
             <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">Store overview</span>
             <span className="inline-flex items-center gap-1.5 normal-case tracking-normal"><CalendarDays className="size-3.5" />{todayLabel}</span>
           </div>
-          <h1 className="text-3xl font-semibold tracking-[-0.045em] sm:text-4xl">{greeting}, {ctx.userName.split(" ")[0]}</h1>
+          <h1 className="text-3xl font-extrabold tracking-[-0.045em] sm:text-4xl">{greeting}, <span className="serif-accent">{ctx.userName.split(" ")[0]}</span></h1>
           <p className="max-w-xl text-sm text-muted-foreground sm:text-base">Here’s the latest from <span className="font-medium text-foreground">{ctx.orgName}</span>.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -267,8 +267,8 @@ function MetricCard({
   trend?: "up" | "down" | null;
 }) {
   const colors = {
-    blue: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
-    violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    blue: "bg-primary/20 text-brand-deep",
+    violet: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
     green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   }[accent];

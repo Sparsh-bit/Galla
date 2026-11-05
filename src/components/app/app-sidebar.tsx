@@ -17,7 +17,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
-import { LogoMark } from "./logo";
+import { LogoMark, PoweredBy } from "./logo";
 import { NAV } from "./nav";
 import { useOrg } from "./org-context";
 
@@ -122,6 +122,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
       </SidebarContent>
 
       <SidebarFooter>
+        <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden"><PoweredBy className="flex-col items-start gap-1 text-[9px]" /></div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
