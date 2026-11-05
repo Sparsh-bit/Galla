@@ -6,6 +6,8 @@ import { BUSINESS_TYPES } from "@/lib/schemas";
 import { auth } from "../auth";
 import { connectDb } from "../db";
 import { initializeBusiness, slugify } from "../services/onboarding";
+import { isLockedOut } from "../context";
+import { LOCKED_MESSAGE } from "../services/subscription";
 import { toSafeError, type ActionResult } from "../with-auth";
 
 const schema = z
@@ -27,6 +29,8 @@ export async function createBusiness(input: z.input<typeof schema>): Promise<Act
   const h = await headers();
   const session = await auth.api.getSession({ headers: h });
   if (!session) return { ok: false, error: "Please sign in again." };
+  // A locked or expired seller can't side-step the lock by opening a new business.
+  if (await isLockedOut()) return { ok: false, code: "LOCKED", error: LOCKED_MESSAGE };
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   if (parsed.data.taxMode === "GST" && parsed.data.taxId && !/^\d{2}[A-Z0-9]{13}$/.test(parsed.data.taxId)) return { ok: false, error: "GSTIN must be 15 characters." };

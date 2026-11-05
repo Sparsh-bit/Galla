@@ -533,6 +533,38 @@ const rateLimitSchema = new Schema(
 );
 export const RateLimit = model("RateLimit", rateLimitSchema, false);
 
+/* ---------- provider (Concilio Solutions) ---------- */
+
+// One per business. No document = active with no expiry (businesses created before subscriptions existed).
+const subscriptionSchema = new Schema(
+  {
+    orgId: { type: ObjectId, required: true, unique: true },
+    plan: { type: String, default: "Standard", trim: true, maxlength: 60 },
+    priceMonthly: { type: Number, default: 0, min: 0 }, // paise
+    paidUntil: { type: Date, default: null }, // null = no expiry
+    status: { type: String, enum: ["active", "locked"], default: "active" },
+    lockReason: { type: String, default: "", maxlength: 300 },
+    notes: { type: String, default: "", maxlength: 2000 },
+    payments: {
+      type: [{ amount: Number, months: Number, paidAt: Date, method: String, reference: String, note: String, recordedBy: String, _id: false }],
+      default: [],
+    },
+  },
+  opts,
+);
+export const Subscription = model("Subscription", subscriptionSchema, false);
+
+// Concilio Solutions staff who can open the provider portal (Better Auth user ids).
+const providerAdminSchema = new Schema({ userId: { type: String, required: true, unique: true }, email: { type: String, required: true } }, opts);
+export const ProviderAdmin = model("ProviderAdmin", providerAdminSchema, false);
+
+const providerAuditSchema = new Schema(
+  { adminEmail: String, action: { type: String, required: true }, orgId: String, orgName: String, detail: String, ip: String },
+  { timestamps: { createdAt: true, updatedAt: false }, versionKey: false },
+);
+providerAuditSchema.index({ createdAt: -1 });
+export const ProviderAudit = model("ProviderAudit", providerAuditSchema, false);
+
 export { Types };
 export type ProductDoc = InferSchemaType<typeof productSchema> & { _id: Types.ObjectId };
 export type VariantDoc = InferSchemaType<typeof variantSchema> & { _id: Types.ObjectId };

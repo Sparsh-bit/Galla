@@ -1,4 +1,5 @@
 import "server-only";
+import { offlineLicenseUntil } from "./subscription";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { fiscalYear, parseOfflineNumber } from "@/lib/numbering";
@@ -6,7 +7,7 @@ import { can } from "@/lib/permissions";
 import { objectId } from "@/lib/schemas";
 import { computeBill } from "@/lib/tax";
 import { AppError, getOrgSettings, type Ctx } from "../context";
-import { Batch, Device, Location, OrgSettings, Party, Sale, SerialNumber, type OrgSettingsDoc } from "../models";
+import { Subscription, Batch, Device, Location, OrgSettings, Party, Sale, SerialNumber, type OrgSettingsDoc } from "../models";
 import { inTransaction } from "../with-auth";
 import { catalogSnapshot, getVariantHits } from "./products";
 import { CASHIER_MAX_DISCOUNT_PCT } from "./sales";
@@ -46,8 +47,11 @@ export async function posSnapshot(ctx: Ctx, locationId: string) {
     SerialNumber.find({ orgId: ctx.orgId, locationId, status: "in_stock" }, { serial: 1, variantId: 1 }).limit(50000).lean(),
   ]);
   const a = s.address ?? {};
+  const sub = await Subscription.findOne({ orgId: ctx.orgId }, { status: 1, paidUntil: 1 }).lean();
   return {
     generatedAt: new Date().toISOString(),
+    // Offline billing stops after this unless the till checks in (so a locked shop can't bill forever offline).
+    licenseUntil: offlineLicenseUntil(sub),
     locationId,
     variants,
     customers: customers.map((c) => ({ id: String(c._id), name: c.name, phone: c.phone, stateCode: c.stateCode, taxId: c.taxId, balance: c.balance, creditLimit: c.creditLimit })),

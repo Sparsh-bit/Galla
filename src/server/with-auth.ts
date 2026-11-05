@@ -3,10 +3,11 @@ import { unstable_rethrow } from "next/navigation";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { can, type Permission } from "@/lib/permissions";
-import { AppError, loadCtx, type Ctx } from "./context";
+import { AppError, isLockedOut, loadCtx, type Ctx } from "./context";
+import { LOCKED_MESSAGE } from "./services/subscription";
 import { connectDb } from "./db";
 
-export type ErrorCode = "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "INSUFFICIENT_STOCK" | "CREDIT_LIMIT" | "INTERNAL";
+export type ErrorCode = "UNAUTHENTICATED" | "LOCKED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "INSUFFICIENT_STOCK" | "CREDIT_LIMIT" | "INTERNAL";
 /** `code` is machine-readable (the REST API maps it to an HTTP status); the web UI shows `error`. */
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string; code?: ErrorCode; fieldErrors?: Record<string, string[]> };
 
@@ -18,7 +19,10 @@ export function withAuth<S extends z.ZodType, T>(permission: Permission, schema:
   return async (input: z.input<S>): Promise<ActionResult<T>> => {
     try {
       const ctx = await loadCtx();
-      if (!ctx) return { ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." };
+      if (!ctx) {
+        if (await isLockedOut()) return { ok: false, code: "LOCKED", error: LOCKED_MESSAGE };
+        return { ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." };
+      }
       if (!can(ctx.role, permission)) return { ok: false, code: "FORBIDDEN", error: "You don't have permission to do that." };
       const parsed = schema.safeParse(input);
       if (!parsed.success) {

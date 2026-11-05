@@ -8,7 +8,7 @@ import { getPosSnapshot, registerTill, syncOfflineSales } from "@/server/actions
 import type { VariantHit } from "@/server/services/products";
 import type { PosSnapshot } from "@/server/services/offline";
 import type { CartLine, PosCustomer } from "@/components/pos/types";
-import { getSnapshot, getTill, listQueued, nextOfflineSeq, queueSale, removeQueued, setSnapshot, setTill, type QueuedSale, type Till } from "./store";
+import { clearOffline, getSnapshot, getTill, listQueued, nextOfflineSeq, queueSale, removeQueued, setSnapshot, setTill, type QueuedSale, type Till } from "./store";
 import { useOnline } from "./use-online";
 
 const REFRESH_MS = 10 * 60 * 1000;
@@ -75,6 +75,10 @@ export function useOfflinePos(orgId: string, locationId: string) {
         if (r.ok && alive) {
           setSnap(r.data);
           await setSnapshot(orgId, r.data);
+        } else if (!r.ok && r.code === "LOCKED") {
+          // Locked by Concilio: drop this device's offline copy so billing stops here too.
+          await clearOffline(orgId).catch(() => undefined);
+          window.location.replace(new URL("/locked", window.location.origin).href); // full reload drops everything held in memory
         }
       } catch {
         /* network blip: keep the cached snapshot */
@@ -164,6 +168,10 @@ export function useOfflinePos(orgId: string, locationId: string) {
     async (o: OfflineCheckout): Promise<{ number: string; receipt: ReceiptData; total: number } | null> => {
       if (!till || !snapshot) {
         toast.error("This device isn't ready for offline billing yet. Open the POS once while online.");
+        return null;
+      }
+      if (snapshot.licenseUntil && Date.now() > Date.parse(snapshot.licenseUntil)) {
+        toast.error("Galla needs to check your subscription. Connect to the internet to keep billing.", { duration: 8000 });
         return null;
       }
       const s = snapshot.settings;

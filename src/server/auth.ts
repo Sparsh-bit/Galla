@@ -11,7 +11,8 @@ import { MongoClient, ObjectId } from "mongodb";
 import { env } from "@/env";
 import { sendMail } from "./mail";
 import { connectDb } from "./db";
-import { LoginAttempt } from "./models";
+import { LoginAttempt, ProviderAdmin } from "./models";
+import { lockReason } from "./services/subscription";
 
 const g = globalThis as unknown as { __authMongo?: MongoClient };
 const client = (g.__authMongo ??= new MongoClient(env.MONGODB_URI));
@@ -80,6 +81,7 @@ export const auth = betterAuth({
   hooks: {
     // Per-account lockout on top of per-IP rate limiting.
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/sign-up/email") return guardSignUp(String((ctx.body as { email?: string })?.email ?? "").toLowerCase().trim());
       if (ctx.path !== "/sign-in/email") return;
       const email = String((ctx.body as { email?: string })?.email ?? "").toLowerCase();
       await connectDb();
@@ -87,6 +89,7 @@ export const auth = betterAuth({
       if (attempt && attempt.count >= MAX_FAILED_LOGINS) {
         throw new APIError("TOO_MANY_REQUESTS", { message: "Too many failed attempts. Try again in 15 minutes or reset your password." });
       }
+      await guardLocked(email);
     }),
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path !== "/sign-in/email") return;
@@ -117,3 +120,27 @@ export const auth = betterAuth({
 });
 
 export type AuthSession = typeof auth.$Infer.Session;
+
+/** Accounts are created by Concilio Solutions; sign-up is open only to people with a pending team invitation. */
+async function guardSignUp(email: string) {
+  if (env.ALLOW_PUBLIC_SIGNUP === "true") return;
+  const invited = await db.collection("invitation").findOne({ email, status: "pending", expiresAt: { $gt: new Date() } }, { projection: { _id: 1 } });
+  if (!invited) throw new APIError("FORBIDDEN", { message: "SIGNUP_CLOSED" });
+}
+
+/** A user whose every business is locked or past its paid date cannot sign in (provider admins can). */
+async function guardLocked(email: string) {
+  const user = await db.collection("user").findOne({ email }, { projection: { _id: 1 } });
+  if (!user) return;
+  const subs = await db
+    .collection("member")
+    .aggregate<{ sub?: { status?: string; paidUntil?: Date | null } }>([
+      { $match: { userId: user._id } },
+      { $lookup: { from: "subscriptions", localField: "organizationId", foreignField: "orgId", as: "sub", pipeline: [{ $project: { status: 1, paidUntil: 1 } }] } },
+      { $project: { sub: { $first: "$sub" } } },
+    ])
+    .toArray();
+  if (subs.length && subs.every((m) => lockReason(m.sub)) && !(await ProviderAdmin.exists({ userId: String(user._id) }))) {
+    throw new APIError("FORBIDDEN", { message: "SUBSCRIPTION_LOCKED" });
+  }
+}

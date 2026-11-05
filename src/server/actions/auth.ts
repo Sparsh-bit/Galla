@@ -12,6 +12,7 @@ import { connectDb } from "../db";
 import { AppError } from "../context";
 import { RateLimit } from "../models";
 import { toSafeError, withAuth, type ActionResult } from "../with-auth";
+import { LOCKED_MESSAGE } from "../services/subscription";
 
 const email = z.email().max(200).transform((e) => e.toLowerCase().trim());
 const password = z.string().min(1).max(128);
@@ -48,6 +49,7 @@ export async function signInAction(input: { email: string; password: string }): 
     return { ok: true, data: { twoFactor: "twoFactorRedirect" in r && !!r.twoFactorRedirect } };
   } catch (e) {
     if (isAPIError(e)) {
+      if (e.status === "FORBIDDEN" && e.body?.message === "SUBSCRIPTION_LOCKED") return { ok: false, code: "LOCKED", error: LOCKED_MESSAGE };
       if (e.status === "FORBIDDEN") return { ok: false, error: "UNVERIFIED" };
       if (e.status === "TOO_MANY_REQUESTS") return { ok: false, error: message(e, TOO_MANY.error) };
       return { ok: false, error: "Incorrect email or password." };
@@ -64,6 +66,7 @@ export async function signUpAction(input: { name: string; email: string; passwor
     await auth.api.signUpEmail({ body: { name: p.data.name, email: p.data.email, password: p.data.password, callbackURL: p.data.next }, headers: await headers() });
     return { ok: true, data: null };
   } catch (e) {
+    if (isAPIError(e) && e.body?.message === "SIGNUP_CLOSED") return { ok: false, error: "Galla accounts are created by Concilio Solutions. Use Request access on galla.concilio.solutions, or ask your shop owner to invite you." };
     if (isAPIError(e) && (e.status === "UNPROCESSABLE_ENTITY" || /exist/i.test(e.body?.message ?? ""))) return { ok: false, error: "An account with this email already exists. Try signing in." };
     return { ok: false, error: message(e, "Could not create the account.") };
   }

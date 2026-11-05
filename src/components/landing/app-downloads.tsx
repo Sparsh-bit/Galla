@@ -1,10 +1,11 @@
-import { Apple, Download, Monitor, Smartphone } from "lucide-react";
+import { Download, Monitor, Smartphone } from "lucide-react";
+import { AndroidLogo, AppleLogo, WindowsLogo } from "./brand-icons";
 import { env } from "@/env";
 import { DESKTOP, publishedInstallers } from "@/lib/downloads";
 
 const MOBILE = [
-  { name: "iPhone & iPad", icon: Apple, store: "App Store", url: () => env.IOS_APP_URL },
-  { name: "Android", icon: Smartphone, store: "Google Play", url: () => env.ANDROID_APP_URL },
+  { name: "iPhone & iPad", icon: AppleLogo, store: "App Store", url: () => env.IOS_APP_URL },
+  { name: "Android", icon: AndroidLogo, store: "Google Play", url: () => env.ANDROID_APP_URL },
 ];
 
 /** Mac and Windows installers, plus the phone apps (coming soon until their store links are set). */
@@ -18,10 +19,13 @@ export async function AppDownloads() {
           {DESKTOP.map((d) => {
             const href = links[d.file];
             const text = (
-              <span>
+              <span className="flex items-start gap-3">
+                {d.id === "windows" ? <WindowsLogo className="mt-0.5 size-6 shrink-0 text-[#0078d4]" /> : <AppleLogo className="mt-0.5 size-6 shrink-0 text-foreground" />}
+                <span>
                 <span className="block text-base font-bold">{d.label}</span>
                 <span className="text-xs text-muted-foreground">{d.sub}</span>
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{href ? `${d.file}${version ? ` · v${version}` : ""}` : "Available soon"}</span>
+                </span>
               </span>
             );
             return href ? (
