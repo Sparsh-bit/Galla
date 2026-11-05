@@ -52,11 +52,31 @@ async function sessionToken() {
   return null;
 }
 
+// Per-client request cap for the REST API (Better Auth already throttles sign-in; the auth routes have their own limits).
+// ponytail: in-memory per server instance, which is exact while the service runs one replica; move to the
+// RateLimit collection if you scale out to several replicas.
+const WINDOW_MS = 60_000;
+const MAX_PER_WINDOW = 600;
+const hits = new Map<string, { n: number; reset: number }>();
+function overLimit(req: Request) {
+  const now = Date.now();
+  const auth = req.headers.get("authorization");
+  const key = auth ? `t:${auth.slice(-24)}` : `ip:${req.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "local"}`;
+  if (hits.size > 5000) for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
+  const h = hits.get(key);
+  if (!h || h.reset < now) {
+    hits.set(key, { n: 1, reset: now + WINDOW_MS });
+    return false;
+  }
+  return ++h.n > MAX_PER_WINDOW;
+}
+
 export async function handleApi(req: Request, segments: string[] = []) {
   const path = "/" + segments.join("/");
   if (req.method === "GET" && path === "/") {
     return json({ ok: true, data: { name: "Galla API", version: 1, auth: "Cookie session or Authorization: Bearer <token> from POST /api/v1/auth/sign-in", routes: ROUTES.map((r) => ({ method: r.method, path: `/api/v1${r.path}`, summary: r.summary })) } });
   }
+  if (overLimit(req)) return fail(429, "INVALID", "Too many requests. Please slow down and try again in a minute.");
   const m = match(req.method, path);
   if (!m) return fail(404, "NOT_FOUND", `No endpoint ${req.method} /api/v1${path}`);
   // Sign-in style routes carry no session yet, so there is nothing to forge; everything else needs a bearer token or our origin.

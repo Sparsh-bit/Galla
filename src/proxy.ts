@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden", "/download"];
+const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden", "/download", "/robots.txt"];
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Optimistic gate only (real checks happen server-side on every page and action).
-  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon");
+  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon") || pathname.startsWith("/.well-known/");
   const hasSession = SESSION_COOKIES.some((c) => request.cookies.has(c));
   if (!isPublic && !hasSession && !pathname.startsWith("/api/")) {
     const url = new URL("/sign-in", request.url);

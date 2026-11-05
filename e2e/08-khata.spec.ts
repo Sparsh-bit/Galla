@@ -136,7 +136,7 @@ test("purchase with a new product, part-payment against that invoice, udhaar and
     await expect(g.getByText("Ball Pen Blue")).toBeVisible();
     await expect(g.getByText(/TOTAL/)).toBeVisible();
     await g.goto(`${new URL(billUrl).pathname.slice(0, -2)}xx`); // tampered link
-    await expect(g.getByText(/could not be found|404/i).first()).toBeVisible();
+    await expect(g.getByText(/could not be found|doesn't exist|404/i).first()).toBeVisible();
     await guest.close();
   });
 });
