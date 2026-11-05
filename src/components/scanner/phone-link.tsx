@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useOrg } from "@/components/app/org-context";
+import { useT } from "@/components/app/i18n-provider";
 import { lookupCode } from "@/server/actions/products";
 import { startRemoteScan, stopRemoteScan } from "@/server/actions/sales";
 import { Button } from "@/components/ui/button";
@@ -150,10 +151,11 @@ export function PhoneLinkProvider({ children }: { children: React.ReactNode }) {
 /** Header button: shows whether a phone is linked and opens the pairing QR. */
 export function PhoneLinkButton({ compact = false }: { compact?: boolean }) {
   const { linked, connected, open } = usePhoneLink();
+  const t = useT();
   return (
     <Button type="button" variant={linked ? "secondary" : "outline"} size={compact ? "sm" : "default"} onClick={open} aria-label={linked ? "Phone linked" : "Link a phone as scanner"}>
       <Smartphone className={linked && connected ? "text-success" : ""} />
-      <span className="hidden lg:inline">{linked ? "Phone linked" : "Link phone"}</span>
+      <span className="hidden lg:inline">{linked ? t("Phone linked") : t("Link phone")}</span>
     </Button>
   );
 }

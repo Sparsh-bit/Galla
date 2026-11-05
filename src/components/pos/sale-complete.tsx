@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, FileText, Printer } from "lucide-react";
 import { billMessage } from "@/lib/bill-message";
 import { billShareLink } from "@/server/actions/sales";
+import { useT } from "@/components/app/i18n-provider";
 import { useOrg } from "@/components/app/org-context";
 import { loadProfile } from "@/components/print/printer";
 import { printLocal, printSale } from "@/components/print/use-print-sale";
@@ -35,6 +36,7 @@ export function SaleComplete({ sale, onNext }: { sale: CompletedSale | null; onN
 }
 
 function SaleCompleteDialog({ sale, onNext }: { sale: CompletedSale | null; onNext: () => void }) {
+  const t = useT();
   const org = useOrg();
   const [shared, setShared] = useState<string | null>(null);
 
@@ -57,18 +59,18 @@ function SaleCompleteDialog({ sale, onNext }: { sale: CompletedSale | null; onNe
       <DialogContent className="sm:max-w-md" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onNext(); } }}>
         <DialogHeader className="items-center text-center">
           <CheckCircle2 className="size-14 text-success" />
-          <DialogTitle className="text-xl">Sale complete</DialogTitle>
+          <DialogTitle className="text-xl">{t("Sale complete")}</DialogTitle>
           <DialogDescription>Bill {sale?.number}{sale?.local && " · saved on this device, will sync when online"}</DialogDescription>
         </DialogHeader>
         {sale && (
           <>
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="rounded-lg bg-muted/60 p-3">
-                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xs text-muted-foreground">{t("Total")}</p>
                 <p className="text-xl font-semibold tabular-nums">{org.money(sale.total)}</p>
               </div>
               <div className={`rounded-lg p-3 ${sale.change ? "bg-warning/20" : "bg-muted/60"}`}>
-                <p className="text-xs text-muted-foreground">Change</p>
+                <p className="text-xs text-muted-foreground">{t("Change")}</p>
                 <p className="text-xl font-semibold tabular-nums">{org.money(sale.change)}</p>
               </div>
             </div>
@@ -82,7 +84,7 @@ function SaleCompleteDialog({ sale, onNext }: { sale: CompletedSale | null; onNe
               </Button>
             </div>
             <Button size="lg" className="h-11 w-full" onClick={onNext} autoFocus>
-              New sale <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
+              {t("New sale")} <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
             </Button>
           </>
         )}

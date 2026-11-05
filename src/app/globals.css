@@ -265,6 +265,87 @@ html[data-platform="desktop-darwin"] [data-slot="sidebar"][data-state="collapsed
 /* Windows: the minimise/maximise/close buttons sit over the header's right edge. */
 html[data-platform="desktop-win32"] [data-app-header] { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.75rem); }
 
+
+/* ---------------- Welcome splash (from the Galla film) ---------------- */
+.welcome-splash { display: none; }
+html[data-splash] { overflow: hidden; }
+html[data-splash] .welcome-splash {
+  position: fixed; inset: 0; z-index: 2147483000; display: grid; place-content: center; justify-items: center; gap: 1.1rem;
+  background: radial-gradient(ellipse at 50% 42%, #fff6e3 0, #fbf7ef 45%, #f4ecdc 100%);
+  color: #14161f; cursor: default; user-select: none;
+}
+html[data-splash="out"] .welcome-splash { animation: ws-out 420ms var(--ease-ios) forwards; }
+.ws-glow { position: absolute; left: 50%; top: 44%; width: 44rem; height: 44rem; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.86 0.14 78 / 55%), transparent 62%); animation: ws-glow 3s ease-out both; pointer-events: none; }
+.ws-stage { position: relative; display: flex; align-items: center; gap: 1.1rem; }
+.ws-tile { width: 6.2rem; height: 6.2rem; border-radius: 1.5rem; filter: drop-shadow(0 22px 34px rgb(224 123 18 / 0.35));
+  animation: ws-tile 950ms var(--ease-spring) 80ms both; }
+.ws-coin { animation: ws-coin 620ms cubic-bezier(0.5, 0, 0.75, 0) 520ms both; }
+.ws-drawer { transform-origin: 16px 22px; animation: ws-bump 380ms var(--ease-spring) 1080ms both; }
+.ws-shine { animation: ws-shine 900ms ease-in-out 1250ms both; }
+.ws-word { margin: 0; display: flex; align-items: flex-end; font-size: 5.4rem; line-height: 1; font-weight: 800; letter-spacing: -0.06em; }
+.ws-word span:not(.ws-dot) { display: inline-block; animation: ws-rise 620ms var(--ease-ios) both; }
+.ws-dot { display: inline-block; width: 0.2em; height: 0.2em; margin: 0 0 0.12em 0.04em; background: #f5a524; border-radius: 0.03em; animation: ws-pop 480ms var(--ease-spring) 1160ms both; }
+.ws-tag { margin: 0; font-size: 1.45rem; font-weight: 500; animation: ws-blur 700ms var(--ease-ios) 1400ms both; }
+.ws-tag em { font-family: var(--font-serif), Georgia, serif; font-style: italic; color: #b06a12; }
+.ws-power { position: absolute; bottom: 2.4rem; left: 0; right: 0; margin: 0; text-align: center; font: 600 0.68rem/1 var(--font-geist-mono), monospace;
+  letter-spacing: 0.32em; text-transform: uppercase; color: #8a8376; animation: ws-fade 600ms ease 1900ms both; }
+@keyframes ws-glow { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
+@keyframes ws-tile { 0% { opacity: 0; transform: translateY(-40px) rotate(-24deg) scale(0.45) } 60% { opacity: 1 } 100% { opacity: 1; transform: none } }
+@keyframes ws-coin { 0% { opacity: 0; transform: translateY(-14px) } 30% { opacity: 1 } 80% { transform: translateY(1.2px) } 100% { opacity: 1; transform: none } }
+@keyframes ws-bump { 0% { transform: none } 40% { transform: scaleY(0.9) translateY(0.8px) } 100% { transform: none } }
+@keyframes ws-shine { from { transform: skewX(-18deg) translateX(0) } to { transform: skewX(-18deg) translateX(52px) } }
+@keyframes ws-rise { from { opacity: 0; transform: translateY(0.45em); filter: blur(8px) } to { opacity: 1; transform: none; filter: none } }
+@keyframes ws-pop { 0% { opacity: 0; transform: scale(0) } 100% { opacity: 1; transform: none } }
+@keyframes ws-blur { from { opacity: 0; filter: blur(10px); transform: translateY(8px) } to { opacity: 1; filter: none; transform: none } }
+@keyframes ws-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes ws-out { to { opacity: 0; transform: scale(1.04) } }
+@media (max-width: 640px) {
+  .ws-tile { width: 4.2rem; height: 4.2rem; border-radius: 1rem; }
+  .ws-word { font-size: 3.6rem; }
+  .ws-tag { font-size: 1.1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-splash] .welcome-splash *, html[data-splash] .welcome-splash { animation-duration: 1ms !important; animation-delay: 0ms !important; }
+}
+
+/* ---------------- Tactile & paper design language ----------------
+   Skeuomorphic touches where they help a shop counter (pressable keys, a cash-box tile), paper-cutout
+   layering for cards, and mid-century geometry as quiet accents. Glitch, vaporwave and other loud styles
+   were left out on purpose: a billing screen must stay calm and legible all day. */
+[data-slot="button"][data-variant="default"] {
+  background-image: linear-gradient(180deg, oklch(0.85 0.15 80), oklch(0.77 0.165 68));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.5), inset 0 -1px 0 oklch(0.62 0.15 58 / 0.55), 0 1px 1px oklch(0.45 0.1 60 / 0.25), 0 6px 14px -8px oklch(0.6 0.16 62 / 0.7);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
+}
+[data-slot="button"][data-variant="default"]:hover { filter: brightness(1.03) saturate(1.05); }
+[data-slot="button"][data-variant="default"]:active:not(:disabled) {
+  box-shadow: inset 0 2px 4px oklch(0.55 0.15 58 / 0.45), 0 0 0 transparent;
+}
+[data-slot="button"][data-variant="outline"] {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px oklch(0.4 0.05 70 / 0.08);
+}
+[data-slot="card"] {
+  box-shadow: inset 0 1px 0 rgb(255 255 255), 0 1px 2px oklch(0.4 0.05 70 / 0.06), 0 2px 0 -1px oklch(0.92 0.02 85), 0 14px 30px -24px oklch(0.45 0.08 65 / 0.4);
+}
+[data-slot="sidebar-menu-button"][data-active="true"] {
+  background: linear-gradient(180deg, oklch(0.96 0.05 85), oklch(0.93 0.07 80));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), 0 1px 2px oklch(0.5 0.08 65 / 0.15);
+}
+/* Paper grain on the canvas (skipped in lite mode and dark mode). */
+html:not(.lite):not(.dark) body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.35 0 0 0 0 0.2 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+/* Mid-century corner accent: a quarter disc tucked into the corner of a tile. */
+.geo-corner { position: relative; isolation: isolate; }
+.geo-corner::after {
+  content: ""; position: absolute; right: -2.2rem; bottom: -2.2rem; width: 6.5rem; height: 6.5rem; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle at 30% 30%, oklch(0.9 0.09 80 / 0.55), oklch(0.9 0.09 80 / 0) 70%);
+  transition: transform 300ms var(--ease-ios);
+}
+.geo-corner:hover::after { transform: scale(1.12); }
+html.lite .geo-corner::after { display: none; }
+
 /* Amber text must stay readable on paper: `text-primary` uses the deeper brand amber. */
 .text-primary { color: var(--brand-deep); }
 .bg-primary .text-primary, .text-primary-foreground .text-primary { color: inherit; }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Barcode, Printer, ShieldCheck, Smartphone } from "lucide-react";
 import { Logo, PoweredBy } from "@/components/app/logo";
+import { LanguagePicker } from "@/components/app/i18n-provider";
 
 const POINTS = [
   { icon: Barcode, title: "Scan anything", text: "USB and Bluetooth scanners, or just your phone camera." },
@@ -41,7 +42,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <span className="text-xs text-muted-foreground">© {new Date().getFullYear()} Galla</span>
         </div>
       </aside>
-      <main className="flex flex-col justify-center px-4 py-10 sm:px-10">
+      <main className="relative flex flex-col justify-center px-4 py-10 sm:px-10">
+        <LanguagePicker className="absolute right-4 top-4" />
         <div className="mx-auto w-full max-w-sm">
           <Link href="/" className="mb-10 inline-block lg:hidden">
             <Logo />

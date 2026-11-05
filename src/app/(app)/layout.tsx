@@ -10,13 +10,15 @@ import { RegisterServiceWorker } from "@/components/offline/register-sw";
 import { UpdateNotifier } from "@/components/app/update-notifier";
 import { DeviceBridge } from "@/components/print/device-bridge";
 import { PhoneLinkButton, PhoneLinkProvider } from "@/components/scanner/phone-link";
+import { LanguagePicker } from "@/components/app/i18n-provider";
+import { getT } from "@/server/i18n";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const ctx = await requireCtx();
-  const [settings, cookieStore] = await Promise.all([getOrgSettings(ctx.orgId), cookies()]);
+  const [settings, cookieStore, t] = await Promise.all([getOrgSettings(ctx.orgId), cookies(), getT()]);
 
   return (
     <OrgProvider
@@ -39,11 +41,12 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-5" />
             <CommandMenu />
             <div className="ml-auto flex items-center gap-2">
+              <LanguagePicker />
               {can(ctx.role, "products:read") && <PhoneLinkButton compact />}
               {can(ctx.role, "pos:sell") && (
                 <Button asChild size="sm">
                   <Link href="/pos">
-                    <ScanBarcode /> <span className="hidden sm:inline">New sale</span>
+                    <ScanBarcode /> <span className="hidden sm:inline">{t("New sale")}</span>
                   </Link>
                 </Button>
               )}

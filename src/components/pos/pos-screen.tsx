@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CirclePause, History, Package, Percent, Search, ShoppingCart, Trash2 } from "lucide-react";
@@ -15,6 +15,7 @@ import { SelectField } from "@/components/app/select-field";
 import { useSearch } from "@/components/app/use-search";
 import { CameraScanButton } from "@/components/scanner/scan-tools";
 import { PhoneLinkButton } from "@/components/scanner/phone-link";
+import { useT } from "@/components/app/i18n-provider";
 import { scanFeedback, useScanner } from "@/components/scanner/use-scanner";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -100,7 +101,8 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
     linesRef.current = lines;
   });
 
-  const addHit = useCallback((hit: VariantHit, qty?: number) => {
+  // Not wrapped in useCallback: the React Compiler memoizes it (a manual [] memo could not be preserved).
+  const addHit = (hit: VariantHit, qty?: number) => {
     if (hit.trackSerial) {
       const existing = linesRef.current.find((l) => l.hit.variantId === hit.variantId);
       if (!hit.serial) {
@@ -132,10 +134,10 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       }
       return [{ key: crypto.randomUUID(), hit, qty: qty ?? hit.scale, discount: 0, unitPrice: hit.salePrice, batchId: null, serials: [] }, ...ls];
     });
-  }, []);
+  };
+  const t = useT();
 
-  const handleCode = useCallback(
-    async (code: string) => {
+  const handleCode = async (code: string) => {
       let found: VariantHit | null = null;
       if (navigator.onLine) {
         try {
@@ -159,9 +161,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       toast.error(`No product with code ${code}`, {
         action: org.can("products:write") ? { label: "Create", onClick: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`) } : undefined,
       });
-    },
-    [locationId, addHit, org, router, offline],
-  );
+  };
 
   useScanner(handleCode, !payOpen && !done && !serialFor);
 
@@ -270,8 +270,8 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
             <EmptyMedia variant="icon">
               <ShoppingCart />
             </EmptyMedia>
-            <EmptyTitle>Cart is empty</EmptyTitle>
-            <EmptyDescription>Scan a barcode or tap a product to start a bill.</EmptyDescription>
+            <EmptyTitle>{t("Cart is empty")}</EmptyTitle>
+            <EmptyDescription>{t("Scan a barcode or tap a product to start a bill.")}</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (
@@ -292,7 +292,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       )}
       <div className="space-y-1.5 border-t bg-muted/30 p-3 text-sm">
         <div className="flex justify-between text-muted-foreground">
-          <span>Subtotal · {itemCount} item{itemCount === 1 ? "" : "s"}</span>
+          <span>{t("Subtotal · {n} items", { n: itemCount })}</span>
           <span className="tabular-nums">{org.money(bill.subtotal)}</span>
         </div>
         <div className="flex items-center justify-between text-muted-foreground">
@@ -301,29 +301,29 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
         </div>
         {bill.taxTotal > 0 && (
           <div className="flex justify-between text-muted-foreground">
-            <span>{org.taxMode === "GST" ? (interState ? "IGST" : "GST (CGST + SGST)") : "Tax"}</span>
+            <span>{org.taxMode === "GST" ? (interState ? "IGST" : "GST (CGST + SGST)") : t("Tax")}</span>
             <span className="tabular-nums">{org.money(bill.taxTotal)}</span>
           </div>
         )}
         {bill.roundOff !== 0 && (
           <div className="flex justify-between text-muted-foreground">
-            <span>Round off</span>
+            <span>{t("Round off")}</span>
             <span className="tabular-nums">{org.money(bill.roundOff)}</span>
           </div>
         )}
         <div className="flex items-end justify-between pt-1">
-          <span className="font-medium">Total</span>
+          <span className="font-medium">{t("Total")}</span>
           <span className="text-2xl font-semibold tracking-tight tabular-nums">{org.money(bill.grandTotal)}</span>
         </div>
         <div className="grid grid-cols-[auto_auto_1fr] gap-2 pt-2">
-          <Button variant="outline" size="lg" onClick={hold} disabled={!lines.length || holding} aria-label="Hold bill (F8)" title="Hold bill (F8)">
+          <Button variant="outline" size="lg" onClick={hold} disabled={!lines.length || holding} aria-label={t("Hold bill (F8)")} title={t("Hold bill (F8)")}>
             {holding ? <Spinner /> : <CirclePause />}
           </Button>
-          <Button variant="outline" size="lg" onClick={() => lines.length && confirm("Clear this bill?") && reset()} disabled={!lines.length} aria-label="Clear bill" title="Clear bill">
+          <Button variant="outline" size="lg" onClick={() => lines.length && confirm("Clear this bill?") && reset()} disabled={!lines.length} aria-label={t("Clear bill")} title={t("Clear bill")}>
             <Trash2 />
           </Button>
           <Button size="lg" className="h-11 text-base" onClick={() => setPayOpen(true)} disabled={!lines.length}>
-            Pay {org.money(bill.grandTotal)} <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">F4</Kbd>
+            {t("Pay {amount}", { amount: org.money(bill.grandTotal) })} <Kbd className="ml-1 hidden bg-primary-foreground/20 text-primary-foreground sm:inline-flex">F4</Kbd>
           </Button>
         </div>
       </div>
@@ -352,18 +352,18 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
                 }
                 if (e.key === "Escape") setQ("");
               }}
-              placeholder="Search product or scan barcode"
+              placeholder={t("Search product or scan barcode")}
               aria-label="Search product or scan barcode"
             />
             <InputGroupAddon align="inline-end" className="hidden sm:flex">
               <Kbd>F2</Kbd>
             </InputGroupAddon>
           </InputGroup>
-          <CameraScanButton onScan={handleCode} />
+          <CameraScanButton onScan={handleCode} label={t("Camera")} />
           <PhoneLinkButton />
           <OfflineStatus online={offline.online} pending={offline.pending} syncing={offline.syncing} ready={offline.ready} onSync={offline.sync} />
           <Button variant="outline" onClick={() => setHeldOpen(true)} aria-label="Held bills (F9)" disabled={!offline.online}>
-            <History /> <span className="hidden xl:inline">Held</span>
+            <History /> <span className="hidden xl:inline">{t("Held")}</span>
           </Button>
           {locations.length > 1 && (
             <SelectField
@@ -388,9 +388,9 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
                 <EmptyMedia variant="icon">
                   <Package />
                 </EmptyMedia>
-                <EmptyTitle>{results ? "No products found" : "No products yet"}</EmptyTitle>
+                <EmptyTitle>{results ? t("No products found") : t("No products yet")}</EmptyTitle>
                 <EmptyDescription>
-                  {results ? "Try another name, SKU or barcode." : (
+                  {results ? t("Try another name, SKU or barcode.") : (
                     <>Add products first. <Link href="/products/new" className="underline">Create a product</Link></>
                   )}
                 </EmptyDescription>
@@ -440,7 +440,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-3 backdrop-blur lg:hidden">
         <Button size="lg" className="h-12 w-full justify-between text-base" onClick={() => setCartOpen(true)}>
           <span className="flex items-center gap-2">
-            <ShoppingCart /> {itemCount} item{itemCount === 1 ? "" : "s"}
+            <ShoppingCart /> {t("{n} items", { n: itemCount })}
           </span>
           <span className="tabular-nums">{org.money(bill.grandTotal)}</span>
         </Button>
@@ -448,7 +448,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
         <SheetContent side="bottom" className="h-[92dvh] gap-0 p-0 lg:hidden">
           <SheetHeader className="border-b">
-            <SheetTitle>Current bill</SheetTitle>
+            <SheetTitle>{t("Current bill")}</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1">{cart}</div>
         </SheetContent>
@@ -491,13 +491,14 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
 }
 
 function BillDiscount({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled: boolean }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setText(value ? fromMinor(value) : ""); }}>
       <PopoverTrigger asChild>
         <button type="button" disabled={disabled} className="inline-flex items-center gap-1 underline-offset-4 hover:text-foreground hover:underline disabled:pointer-events-none">
-          <Percent className="size-3.5" /> {value ? "Bill discount" : "Add discount"}
+          <Percent className="size-3.5" /> {value ? t("Bill discount") : t("Add discount")}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64" align="start">
@@ -513,9 +514,9 @@ function BillDiscount({ value, onChange, disabled }: { value: number; onChange: 
             }
           }}
         >
-          <label htmlFor="bill-discount" className="text-sm font-medium">Discount on whole bill</label>
+          <label htmlFor="bill-discount" className="text-sm font-medium">{t("Discount on whole bill")}</label>
           <Input id="bill-discount" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} placeholder="0.00" autoFocus />
-          <Button type="submit" size="sm" className="w-full">Apply</Button>
+          <Button type="submit" size="sm" className="w-full">{t("Apply")}</Button>
         </form>
       </PopoverContent>
     </Popover>
