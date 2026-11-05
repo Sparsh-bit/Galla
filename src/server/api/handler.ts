@@ -1,14 +1,15 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { loadCtx } from "../context";
+import { isLockedOut, loadCtx } from "../context";
+import { LOCKED_MESSAGE } from "../services/subscription";
 import { connectDb } from "../db";
 import { csrfOk } from "../http";
 import { toSafeError, type ActionResult, type ErrorCode } from "../with-auth";
 import { match, ROUTES, type Req } from "./routes";
 
 const MAX_BODY = 6 * 1024 * 1024; // same limit as server actions
-const STATUS: Record<ErrorCode, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403, NOT_FOUND: 404, INVALID: 422, CONFLICT: 409, INSUFFICIENT_STOCK: 409, CREDIT_LIMIT: 409, INTERNAL: 500 };
+const STATUS: Record<ErrorCode, number> = { UNAUTHENTICATED: 401, LOCKED: 402, FORBIDDEN: 403, NOT_FOUND: 404, INVALID: 422, CONFLICT: 409, INSUFFICIENT_STOCK: 409, CREDIT_LIMIT: 409, INTERNAL: 500 };
 const SESSION_COOKIES = ["__Secure-better-auth.session_token", "better-auth.session_token"];
 
 type Fail = Extract<ActionResult<unknown>, { ok: false }>;
@@ -90,7 +91,7 @@ export async function handleApi(req: Request, segments: string[] = []) {
   try {
     if (m.route.kind === "query") {
       const ctx = await loadCtx();
-      if (!ctx) return fail(401, "UNAUTHENTICATED", "Your session has expired. Please sign in again.");
+      if (!ctx) return (await isLockedOut()) ? fail(402, "LOCKED", LOCKED_MESSAGE) : fail(401, "UNAUTHENTICATED", "Your session has expired. Please sign in again.");
       await connectDb();
       return json({ ok: true, data: await m.route.run(ctx, r) });
     }

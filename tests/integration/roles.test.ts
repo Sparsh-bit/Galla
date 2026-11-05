@@ -10,7 +10,7 @@ import { ROLES, can, type Permission, type Role } from "@/lib/permissions";
 import type { Ctx } from "@/server/context";
 
 let current: Ctx | null = null;
-vi.mock("@/server/context", async (orig) => ({ ...(await orig<typeof import("@/server/context")>()), loadCtx: vi.fn(async () => current) }));
+vi.mock("@/server/context", async (orig) => ({ ...(await orig<typeof import("@/server/context")>()), loadCtx: vi.fn(async () => current), isLockedOut: vi.fn(async () => false) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), revalidateTag: vi.fn() }));
 
 const DENIED = "You don't have permission to do that.";

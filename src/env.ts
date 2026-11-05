@@ -24,6 +24,12 @@ const schema = z.object({
   ANDROID_APP_URL: z.string().optional(),
   // Where "Request access" sends people (the Concilio Solutions booking page).
   REQUEST_ACCESS_URL: z.url().optional(),
+  // Anyone may sign up ("true"), or only people with a pending team invitation (default: accounts are
+  // created by Concilio Solutions in the provider portal).
+  ALLOW_PUBLIC_SIGNUP: z.enum(["true", "false"]).default("false"),
+  // The first provider-portal admin, created on first sign-in at /provider/sign-in. Set on the server only.
+  PROVIDER_ADMIN_EMAIL: z.email().optional(),
+  PROVIDER_ADMIN_PASSWORD: z.string().min(10).optional(),
   // Desktop apps older than this must update before use (e.g. "0.2.0"); unset = any version works.
   MIN_DESKTOP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {

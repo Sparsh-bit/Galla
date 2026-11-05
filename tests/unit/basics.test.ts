@@ -66,3 +66,17 @@ describe("permissions", () => {
     expect(can("owner", "settings:manage")).toBe(true);
   });
 });
+
+import { lockReason, offlineLicenseUntil, OFFLINE_LEASE_MS } from "@/server/services/subscription";
+
+describe("subscriptions", () => {
+  const now = Date.parse("2026-11-06T00:00:00Z");
+  it("no subscription record means active", () => expect(lockReason(null, now)).toBeNull());
+  it("locked wins over a future paid date", () => expect(lockReason({ status: "locked", paidUntil: new Date(now + 86400e3) }, now)).toBe("locked"));
+  it("past paid date means expired", () => expect(lockReason({ status: "active", paidUntil: new Date(now - 1) }, now)).toBe("expired"));
+  it("no paid date never expires", () => expect(lockReason({ status: "active", paidUntil: null }, now)).toBeNull());
+  it("offline licence is 72 hours, never past the paid date", () => {
+    expect(Date.parse(offlineLicenseUntil(null, now))).toBe(now + OFFLINE_LEASE_MS);
+    expect(Date.parse(offlineLicenseUntil({ paidUntil: new Date(now + 3600e3) }, now))).toBe(now + 3600e3);
+  });
+});

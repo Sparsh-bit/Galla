@@ -87,3 +87,28 @@ export async function listQueued(orgId: string): Promise<QueuedSale[]> {
   const all = await run<QueuedSale[]>("outbox", "readonly", (s) => s.getAll() as IDBRequest<QueuedSale[]>);
   return all.filter((q) => q.orgId === orgId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
+
+/** Removes this business's till, catalogue snapshots and number series from the device (unsynced bills are kept). */
+export async function clearOffline(orgId: string) {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction("kv", "readwrite");
+    const store = tx.objectStore("kv");
+    const req = store.openCursor();
+    req.onsuccess = () => {
+      const cur = req.result;
+      if (!cur) return;
+      const key = String(cur.key);
+      if (key === `till:${orgId}` || key.startsWith(`snapshot:${orgId}:`) || key.startsWith(`seq:${orgId}:`)) cur.delete();
+      cur.continue();
+    };
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = tx.onabort = () => {
+      db.close();
+      reject(tx.error);
+    };
+  });
+}
