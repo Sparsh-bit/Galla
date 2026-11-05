@@ -14,7 +14,7 @@ export default async function EinvoiceSettingsPage() {
     <PageBody className="max-w-3xl">
       <PageHeader
         title="E-invoice & e-way bill"
-        description="Register B2B invoices with the GST Invoice Registration Portal (IRN + QR) and create e-way bills, straight from StockPilot."
+        description="Register B2B invoices with the GST Invoice Registration Portal (IRN + QR) and create e-way bills, straight from Galla."
         back={{ href: "/settings", label: "Settings" }}
       />
       {s.taxMode !== "GST" ? (

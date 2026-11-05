@@ -50,7 +50,7 @@ export function SignInForm({ next }: { next: string }) {
     <div className="space-y-6">
       <div className="space-y-1.5">
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your StockPilot account.</p>
+        <p className="text-sm text-muted-foreground">Sign in to your Galla account.</p>
       </div>
       {unverified && (
         <Alert>
@@ -86,7 +86,7 @@ export function SignInForm({ next }: { next: string }) {
         </FieldGroup>
       </form>
       <p className="text-center text-sm text-muted-foreground">
-        New to StockPilot?{" "}
+        New to Galla?{" "}
         <Link href="/sign-up" className="font-medium text-foreground underline-offset-4 hover:underline">
           Create an account
         </Link>

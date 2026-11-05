@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins/organization";
 import { memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { bearer } from "better-auth/plugins/bearer";
 import { MongoClient, ObjectId } from "mongodb";
 import { env } from "@/env";
 import { sendMail } from "./mail";
@@ -19,7 +20,7 @@ const db = client.db();
 const MAX_FAILED_LOGINS = 5;
 
 export const auth = betterAuth({
-  appName: "StockPilot",
+  appName: "Galla",
   baseURL: env.APP_URL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.APP_URL],
@@ -32,7 +33,7 @@ export const auth = betterAuth({
     maxPasswordLength: 128,
     revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
-      await sendMail(user.email, "Reset your StockPilot password", "Someone requested a password reset for your account. If it wasn't you, ignore this email.", { url, label: "Reset password" });
+      await sendMail(user.email, "Reset your Galla password", "Someone requested a password reset for your account. If it wasn't you, ignore this email.", { url, label: "Reset password" });
     },
   },
   emailVerification: {
@@ -40,7 +41,7 @@ export const auth = betterAuth({
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      await sendMail(user.email, "Verify your email", `Hi ${user.name}, confirm your email address to start using StockPilot.`, { url, label: "Verify email" });
+      await sendMail(user.email, "Verify your email", `Hi ${user.name}, confirm your email address to start using Galla.`, { url, label: "Verify email" });
     },
   },
   session: {
@@ -105,10 +106,12 @@ export const auth = betterAuth({
       roles: { owner: ownerAc, manager: memberAc, cashier: memberAc, stockkeeper: memberAc },
       invitationExpiresIn: 60 * 60 * 24 * 7,
       sendInvitationEmail: async ({ email, organization: org, inviter, id }) => {
-        await sendMail(email, `Join ${org.name} on StockPilot`, `${inviter.user.name} invited you to join ${org.name}.`, { url: `${env.APP_URL}/accept-invite/${id}`, label: "Accept invitation" });
+        await sendMail(email, `Join ${org.name} on Galla`, `${inviter.user.name} invited you to join ${org.name}.`, { url: `${env.APP_URL}/accept-invite/${id}`, label: "Accept invitation" });
       },
     }),
-    twoFactor({ issuer: "StockPilot" }),
+    twoFactor({ issuer: "Galla" }),
+    // Desktop/phone apps and API clients send the session token as `Authorization: Bearer`.
+    bearer(),
     nextCookies(),
   ],
 });

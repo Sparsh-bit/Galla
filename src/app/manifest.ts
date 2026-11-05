@@ -2,13 +2,13 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "StockPilot — Inventory & POS",
-    short_name: "StockPilot",
-    description: "Inventory, billing and point of sale for every kind of business.",
+    name: "Galla — Your shop’s digital cash box",
+    short_name: "Galla",
+    description: "Billing, stock, khata and GST in one app. Powered by Concilio Solutions.",
     start_url: "/pos",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#4a3fd6",
+    background_color: "#fbf7ef",
+    theme_color: "#f5a524",
     orientation: "any",
     icons: [
       { src: "/icon/192", sizes: "192x192", type: "image/png", purpose: "any" },

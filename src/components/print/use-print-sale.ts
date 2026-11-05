@@ -3,14 +3,14 @@ import { toast } from "sonner";
 import { receiptToEscPos, type ReceiptData } from "@/lib/receipt";
 import { receiptHtml } from "@/lib/receipt-html";
 import { receiptData } from "@/server/actions/sales";
-import { browserPrint, loadProfile, sendRaw } from "./printer";
+import { browserPrint, desktopApp, loadProfile, sendRaw } from "./printer";
 
 /** Prints a sale with this device's printer profile, falling back to the browser dialog. */
 export async function printSale(saleId: string, opts: { format?: "thermal" | "a4"; drawer?: boolean } = {}) {
   const p = loadProfile();
   const format = opts.format ?? p.invoiceFormat;
   if (format === "a4") return browserPrint(`/print/invoice/${saleId}?auto=1`);
-  if (p.transport === "browser") return browserPrint(`/print/receipt/${saleId}?auto=1&w=${p.width}`);
+  if (p.transport === "browser" || p.transport === "system") return browserPrint(`/print/receipt/${saleId}?auto=1&w=${p.width}`);
   const res = await receiptData({ saleId });
   if (!res.ok) return toast.error(res.error);
   try {
@@ -25,7 +25,7 @@ export async function printSale(saleId: string, opts: { format?: "thermal" | "a4
 /** Opens the cash drawer without printing (kick pulse only). */
 export async function kickDrawer() {
   const p = loadProfile();
-  if (p.transport === "browser") return toast.error("Opening the drawer needs a directly connected printer (USB, Serial, Bluetooth or bridge).");
+  if (p.transport === "browser" || p.transport === "system") return toast.error("Opening the drawer needs a directly connected printer (USB, Serial, Bluetooth or bridge).");
   try {
     await sendRaw(p, Uint8Array.from([0x1b, 0x40, 0x1b, 0x70, 0x00, 0x19, 0xfa]));
   } catch (e) {
@@ -37,7 +37,14 @@ export async function kickDrawer() {
 export async function printLocal(receipt: ReceiptData, opts: { drawer?: boolean } = {}) {
   const p = loadProfile();
   const data = { ...receipt, org: { ...receipt.org, paperWidth: p.width } };
-  if (p.transport !== "browser") {
+  if (p.transport === "system" && p.systemPrinter && desktopApp()) {
+    try {
+      await desktopApp()!.printHtml(receiptHtml(data), { printer: p.systemPrinter, width: p.width });
+      return;
+    } catch (e) {
+      toast.error((e as Error).message || "Printer not reachable", { description: "Opening the print dialog instead." });
+    }
+  } else if (p.transport !== "browser" && p.transport !== "system") {
     try {
       await sendRaw(p, receiptToEscPos(data, { openDrawer: opts.drawer ?? p.openDrawer }));
       return;

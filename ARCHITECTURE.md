@@ -1,8 +1,8 @@
-# StockPilot system design
+# Galla system design
 
 ## Product boundary
 
-StockPilot is a multi-tenant inventory, billing and POS application for small businesses. A signed-in person can belong to more than one business. Each request resolves one active business from the authenticated membership; the browser never supplies a trusted tenant context. Business operations run on the server. The browser holds presentation state and a small offline POS cache for an explicitly registered till.
+Galla is a multi-tenant inventory, billing and POS application for small businesses. A signed-in person can belong to more than one business. Each request resolves one active business from the authenticated membership; the browser never supplies a trusted tenant context. Business operations run on the server. The browser holds presentation state and a small offline POS cache for an explicitly registered till.
 
 ## Runtime architecture
 

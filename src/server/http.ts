@@ -11,3 +11,9 @@ export function sameOrigin(req: Request): boolean {
     return false;
   }
 }
+
+/** Native apps authenticate with `Authorization: Bearer <token>` and are not exposed to CSRF. */
+export const hasBearer = (req: Request) => /^Bearer\s+\S+/i.test(req.headers.get("authorization") ?? "");
+
+/** CSRF check for writes: bearer-token clients, or cookie clients on our own origin. */
+export const csrfOk = (req: Request) => hasBearer(req) || sameOrigin(req);

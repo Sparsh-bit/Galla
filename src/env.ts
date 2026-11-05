@@ -9,7 +9,7 @@ const schema = z.object({
   SMTP_URL: z.string().optional(),
   // Resend API key (re_...). Takes precedence over SMTP_URL.
   RESEND_API_KEY: z.string().startsWith("re_").optional(),
-  MAIL_FROM: z.string().default("StockPilot <no-reply@localhost>"),
+  MAIL_FROM: z.string().default("Galla <no-reply@localhost>"),
   // "file" writes outgoing mail to .data/mail.log (used by E2E tests)
   MAIL_SINK: z.enum(["resend", "smtp", "console", "file"]).optional(),
   MAIL_FILE_PATH: z.string().optional(),
@@ -18,9 +18,15 @@ const schema = z.object({
   ENCRYPTION_KEY: z.string().min(32).optional(),
   // Extra hosts the GST e-invoice client may call (comma separated, e.g. a GSP or a local test server).
   NIC_EXTRA_HOSTS: z.string().optional(),
+  // Where installers are hosted (a GitHub "latest release" download URL by default).
+  DESKTOP_RELEASE_BASE: z.string().optional(),
+  IOS_APP_URL: z.string().optional(),
+  ANDROID_APP_URL: z.string().optional(),
+  // Where "Request access" sends people (the Concilio Solutions booking page).
+  REQUEST_ACCESS_URL: z.url().optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {
   path: ["MAIL_FROM"],
-  message: "set MAIL_FROM to a sender on a domain verified in Resend, e.g. StockPilot <no-reply@yourdomain.com>",
+  message: "set MAIL_FROM to a sender on a domain verified in Resend, e.g. Galla <no-reply@yourdomain.com>",
 });
 
 // `next build` (e.g. in Docker/CI) runs without runtime secrets; validate strictly at runtime.

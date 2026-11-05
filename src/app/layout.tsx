@@ -1,39 +1,45 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { THEME_SCRIPT } from "@/components/app/theme";
+import { NativeShell } from "@/components/app/native-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const sans = Inter({ variable: "--font-sans", subsets: ["latin"], display: "swap" });
+const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], style: ["italic"], display: "swap" });
 const mono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "StockPilot — Inventory & POS", template: "%s · StockPilot" },
-  description: "Inventory, billing and point of sale for every kind of business. Works with barcode scanners, receipt printers and your phone camera.",
-  applicationName: "StockPilot",
-  appleWebApp: { capable: true, title: "StockPilot", statusBarStyle: "default" },
+  title: { default: "Galla — Your shop’s digital cash box", template: "%s · Galla" },
+  description: "Billing, stock, khata and GST in one app, built for Indian shops. Works with barcode scanners, receipt printers, your phone camera, and offline. Powered by Concilio Solutions.",
+  applicationName: "Galla",
+  authors: [{ name: "Concilio Solutions", url: "https://concilio.solutions" }],
+  creator: "Concilio Solutions",
+  appleWebApp: { capable: true, title: "Galla", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: light)", color: "#fbf7ef" },
     { media: "(prefers-color-scheme: dark)", color: "#0f1015" },
   ],
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${serif.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full bg-background">
         <Script id="theme" strategy="beforeInteractive" nonce={nonce}>
           {THEME_SCRIPT}
         </Script>
+        <NativeShell />
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         <Toaster richColors position="top-right" closeButton />
       </body>

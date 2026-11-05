@@ -7,6 +7,7 @@ import type { Ctx } from "@/server/context";
 import { connectDb } from "@/server/db";
 import { Types } from "@/server/models";
 import { getReceiptData } from "@/server/services/receipt";
+import { PoweredBy } from "@/components/app/logo";
 import { ReceiptView } from "@/components/print/receipt-view";
 import { PrintButton } from "./print-button";
 
@@ -32,6 +33,7 @@ export default async function PublicBillPage({ params }: PageProps<"/bill/[token
       <div className="mx-auto mt-4 flex max-w-[80mm] justify-center print:hidden">
         <PrintButton />
       </div>
+      <div className="mt-6 flex justify-center print:hidden"><PoweredBy /></div>
     </main>
   );
 }

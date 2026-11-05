@@ -64,7 +64,7 @@ async function seedSample(ctx: Ctx, locationId: string, rateIds: string[]) {
     });
   }
   await createProduct(ctx, {
-    name: "Cotton T-Shirt", description: "", categoryId: String(general._id), brand: "StockPilot", unitCode: "pcs", unitScale: 1, hsn: "6109", taxRateId: rate(1),
+    name: "Cotton T-Shirt", description: "", categoryId: String(general._id), brand: "Galla", unitCode: "pcs", unitScale: 1, hsn: "6109", taxRateId: rate(1),
     priceIncludesTax: true, trackBatch: false, trackSerial: false, warrantyMonths: 0, reorderLevel: 5, images: [], active: true, openingLocationId: locationId,
     variants: ["S", "M", "L"].map((size) => ({ name: size, sku: "", barcodes: [], attributes: [{ name: "Size", value: size }], costPrice: 25000, salePrice: 49900, mrp: 59900, active: true, openingQty: 20 })),
   });

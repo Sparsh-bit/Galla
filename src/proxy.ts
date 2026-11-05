@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden"];
+const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden", "/download"];
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 export function proxy(request: NextRequest) {
@@ -25,7 +25,7 @@ export function proxy(request: NextRequest) {
     "font-src 'self' data:",
     "media-src 'self' blob:",
     // print-bridge runs on the shop PC; Chrome allows https -> http://127.0.0.1
-    "connect-src 'self' http://127.0.0.1:9123 http://localhost:9123",
+    "connect-src 'self' http://127.0.0.1:* http://localhost:*",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

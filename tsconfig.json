@@ -36,11 +36,15 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     ".next-e2e/types/**/*.ts",
-    ".next-e2e/dev/types/**/*.ts"
+    ".next-e2e/dev/types/**/*.ts",
+    ".next-lan/types/**/*.ts",
+    ".next-lan/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "**/._*",
-    ".data"
+    ".data",
+    "desktop",
+    "mobile"
   ]
 }

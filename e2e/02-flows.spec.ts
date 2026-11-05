@@ -135,6 +135,26 @@ test("device settings: scanner test and printer options", async ({ page }) => {
   await page.getByRole("button", { name: /Any printer/ }).click();
 });
 
+test("desktop app: installed printers are listed and a test page prints silently", async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { gallaDesktop: unknown; printed: unknown[] };
+    w.printed = [];
+    w.gallaDesktop = {
+      platform: "darwin",
+      version: "0.1.0",
+      listPrinters: async () => [{ name: "Epson_TM", displayName: "Epson TM-T82", isDefault: true }],
+      printUrl: async () => undefined,
+      printHtml: async (_h: string, o: unknown) => void w.printed.push(o),
+    };
+  });
+  await page.goto("/settings/devices");
+  await page.getByRole("button", { name: /Installed printer/ }).click();
+  await page.getByLabel("Printer", { exact: true }).selectOption("Epson_TM");
+  await page.getByRole("button", { name: "Print test page" }).click();
+  await expect(page.getByText("Test page sent")).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { printed: unknown[] }).printed)).toEqual([{ printer: "Epson_TM", width: 80 }]);
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   test("POS works on a phone with a bottom cart bar", async ({ page }) => {

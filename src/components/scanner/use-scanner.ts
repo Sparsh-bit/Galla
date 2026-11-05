@@ -73,6 +73,9 @@ export function scanFeedback(ok = true) {
     o.start();
     o.stop(audioCtx.currentTime + (ok ? 0.1 : 0.26));
   } catch {}
+  // Native phone apps expose real haptics through Capacitor; the web falls back to vibrate().
+  const haptics = (window as unknown as { Capacitor?: { Plugins?: { Haptics?: { impact?: (o: { style: string }) => void; notification?: (o: { type: string }) => void } } } }).Capacitor?.Plugins?.Haptics;
+  if (haptics?.impact) return void (ok ? haptics.impact({ style: "LIGHT" }) : haptics.notification?.({ type: "ERROR" }));
   // Browsers reject vibration before the first user tap (and log an error), so check first.
   if ((navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive) navigator.vibrate?.(ok ? 40 : [60, 40, 60]);
 }

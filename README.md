@@ -1,6 +1,8 @@
-# StockPilot — Inventory & POS for any business
+# Galla — your shop’s digital cash box
 
-Multi-tenant inventory, billing and point-of-sale web app built with **Next.js 16, React 19, MongoDB (Mongoose) and Better Auth**. It works with USB/Bluetooth barcode scanners and thermal receipt printers. If a business has no hardware, it falls back to the **phone camera** for scanning and **any printer** (or a PDF) for bills.
+_Powered by [Concilio Solutions](https://concilio.solutions)._
+
+Multi-tenant inventory, billing, khata and point-of-sale web app built with **Next.js 16, React 19, MongoDB (Mongoose) and Better Auth**. It works with USB/Bluetooth barcode scanners and thermal receipt printers. If a business has no hardware, it falls back to the **phone camera** for scanning and **any printer** (or a PDF) for bills.
 
 ## Features
 
@@ -59,7 +61,7 @@ To use your own settings, copy `env.example` to `.env.local` and fill it in:
 | `APP_URL` | ✔ | Public URL. Must be **https** in production (camera access and secure cookies need it) |
 | `RESEND_API_KEY` | production* | [Resend](https://resend.com) API key (`re_…`). Sends over HTTPS, so it works on Railway, which blocks SMTP on the Hobby plan |
 | `SMTP_URL` | | *or SMTP instead, e.g. `smtps://user:pass@smtp.example.com:465` |
-| `MAIL_FROM` | | Sender, e.g. `StockPilot <no-reply@yourdomain.com>`. With Resend the domain must be verified in Resend |
+| `MAIL_FROM` | | Sender, e.g. `Galla <no-reply@yourdomain.com>`. With Resend the domain must be verified in Resend |
 | `UPLOAD_DIR` | | Where product images/logos are stored (default `./uploads`) |
 | `ENCRYPTION_KEY` | | 32+ chars; encrypts stored GST API credentials (defaults to a key derived from `BETTER_AUTH_SECRET`; set it so rotating the auth secret doesn't invalidate them) |
 | `NIC_EXTRA_HOSTS` | | Extra e-invoice API hosts allowed besides NIC's own (e.g. your GSP), comma separated |
@@ -103,7 +105,7 @@ Each deploy waits for `/api/health` to pass. It returns 503 with a clear message
 ## GST e-invoice setup
 
 1. On the e-invoice portal ([sandbox](https://einv-apisandbox.nic.in/) first), register for API access and note the **client ID, client secret, API username and password**. Download the **NIC public key** file for that environment.
-2. In StockPilot open **Settings → E-invoice & e-way bill**, paste these in, then click **Test saved connection**.
+2. In Galla open **Settings → E-invoice & e-way bill**, paste these in, then click **Test saved connection**.
 3. Make sure Business profile has your GSTIN, legal name, address and PIN, that products carry HSN codes, and that B2B customers have a GSTIN, address and PIN.
 4. On any B2B tax invoice or credit note, click **Generate IRN**. The A4 invoice then prints the IRN, acknowledgement and signed QR code. Use **E-way bill** for consignments over ₹50,000.
 

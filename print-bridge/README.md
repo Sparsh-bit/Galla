@@ -1,6 +1,6 @@
-# StockPilot print bridge
+# Galla print bridge
 
-Lets StockPilot print to **network (Ethernet / Wi-Fi) receipt printers** that listen on port 9100. Browsers can't open raw TCP connections, so this tiny program runs on one computer in the shop and passes receipts through to the printer.
+Lets Galla print to **network (Ethernet / Wi-Fi) receipt printers** that listen on port 9100. Browsers can't open raw TCP connections, so this tiny program runs on one computer in the shop and passes receipts through to the printer.
 
 Requires Node.js 20+ and has no other dependencies.
 
@@ -11,7 +11,7 @@ Requires Node.js 20+ and has no other dependencies.
    node print-bridge/bridge.mjs --printer 192.168.1.50 --key "choose-a-long-secret" --origin https://your-stockpilot-domain
    ```
 
-3. In StockPilot open **Settings → Printer & scanner → Network (LAN)**. Keep the address `http://127.0.0.1:9123` when using StockPilot on that same computer, enter the same key, then click **Print test page**.
+3. In Galla open **Settings → Printer & scanner → Network (LAN)**. Keep the address `http://127.0.0.1:9123` when using Galla on that same computer, enter the same key, then click **Print test page**.
 
 Options:
 
@@ -20,7 +20,7 @@ Options:
 | `--printer` | — | Printer IP (required) |
 | `--printer-port` | `9100` | Raw printing port |
 | `--key` | `$BRIDGE_KEY` | Shared secret, 12+ characters (required) |
-| `--origin` | any | Your StockPilot URL; repeat for several. Requests from other websites are refused |
+| `--origin` | any | Your Galla URL; repeat for several. Requests from other websites are refused |
 | `--port` | `9123` | Local port for the browser |
 | `--host` | `127.0.0.1` | Use `0.0.0.0` only if other counters on the LAN should print through this PC, and then set their bridge address to `http://<this-pc-ip>:9123` |
 

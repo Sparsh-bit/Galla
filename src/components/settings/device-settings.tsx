@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
-import { Bluetooth, Cable, CheckCircle2, Globe, MonitorSmartphone, Printer, ScanBarcode, Usb } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bluetooth, Cable, Laptop, CheckCircle2, Globe, MonitorSmartphone, Printer, ScanBarcode, Usb } from "lucide-react";
 import { toast } from "sonner";
 import { EscPos } from "@/lib/escpos";
 import { useOrg } from "@/components/app/org-context";
 import { kickDrawer } from "@/components/print/use-print-sale";
-import { pairPrinter, saveProfile, sendRaw, usePrinterProfile, usePrinterSupport, type PrinterProfile, type Transport } from "@/components/print/printer";
+import { desktopApp, pairPrinter, saveProfile, sendRaw, usePrinterProfile, usePrinterSupport, type DesktopPrinter, type PrinterProfile, type Transport } from "@/components/print/printer";
 import { CameraScanButton } from "@/components/scanner/scan-tools";
 import { useScanner } from "@/components/scanner/use-scanner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,12 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
+const SYSTEM = { id: "system" as Transport, label: "Installed printer (silent)", icon: Laptop, text: "Galla desktop app: prints straight to any printer installed on this computer (laser, inkjet, label or thermal) with no dialog." };
 const TRANSPORTS: { id: Transport; label: string; icon: typeof Printer; text: string }[] = [
   { id: "browser", label: "Any printer", icon: Globe, text: "Uses the system print dialog. Works with every installed printer (thermal or A4), in every browser." },
   { id: "usb", label: "USB (direct)", icon: Usb, text: "Silent printing to a USB thermal printer. Chrome/Edge on desktop or Android." },
   { id: "serial", label: "Serial / COM", icon: Cable, text: "For printers that appear as a COM / serial port (most Windows USB thermal printers with a driver)." },
   { id: "bluetooth", label: "Bluetooth", icon: Bluetooth, text: "Portable BLE receipt printers. Chrome on Android, Windows, macOS." },
-  { id: "bridge", label: "Network (LAN)", icon: MonitorSmartphone, text: "Ethernet/Wi-Fi printers via the StockPilot print bridge running on a shop PC." },
+  { id: "bridge", label: "Network (LAN)", icon: MonitorSmartphone, text: "Ethernet/Wi-Fi printers via the Galla print bridge running on a shop PC." },
 ];
 
 export function DeviceSettings() {
@@ -35,17 +36,29 @@ export function DeviceSettings() {
 
   async function pair() {
     try {
-      toast.success(await pairPrinter(p.transport));
+      const r = await pairPrinter(p.transport);
+      update({ deviceKey: r.deviceKey, deviceName: r.deviceName });
+      toast.success(r.message);
     } catch (e) {
       if ((e as DOMException).name !== "NotFoundError") toast.error((e as Error).message || "Could not connect");
     }
   }
 
   async function testPrint() {
+    if (p.transport === "system") {
+      if (!p.systemPrinter) return toast.error("Choose a printer first.");
+      try {
+        await desktopApp()!.printHtml(`<body style="font:14px sans-serif;text-align:center"><h2>${org.orgName.replace(/[<>&]/g, "")}</h2><p>Printer test</p><p>Paper: ${p.width} mm</p><p>If you can read this, printing works!</p></body>`, { printer: p.systemPrinter, width: p.width });
+        toast.success("Test page sent");
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
+      return;
+    }
     if (p.transport === "browser") return toast.info("Complete a sale and use “Receipt”, or open any sale and click Receipt to test browser printing.");
     const e = new EscPos({ width: p.width === 58 ? 32 : 48 }).init().align("center").bold(true).size(2, 2).line(org.orgName.slice(0, 16)).size(1, 1).bold(false)
       .line("Printer test").divider().align("left").cols("Paper width", `${p.width} mm`).cols("Connection", p.transport).cols("Rs. symbol", "₹ -> Rs.").divider()
-      .align("center").qr("https://stockpilot.app", 5).line("If you can read this, printing works!").feed(3).cut();
+      .align("center").qr("https://galla.app", 5).line("If you can read this, printing works!").feed(3).cut();
     try {
       await sendRaw(p, e.bytes());
       toast.success("Test page sent");
@@ -54,7 +67,13 @@ export function DeviceSettings() {
     }
   }
 
-  const unsupported = p.transport !== "browser" && p.transport !== "bridge" && !caps[p.transport];
+  const [printers, setPrinters] = useState<DesktopPrinter[]>([]);
+  useEffect(() => {
+    desktopApp()?.listPrinters().then(setPrinters).catch(() => setPrinters([]));
+  }, []);
+  const options = caps.desktop ? [SYSTEM, ...TRANSPORTS] : TRANSPORTS;
+
+  const unsupported = p.transport !== "browser" && p.transport !== "bridge" && !(p.transport === "system" ? caps.desktop : caps[p.transport]);
 
   return (
     <div className="space-y-6">
@@ -65,7 +84,7 @@ export function DeviceSettings() {
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid gap-2 sm:grid-cols-2">
-            {TRANSPORTS.map((t) => (
+            {options.map((t) => (
               <button key={t.id} type="button" onClick={() => update({ transport: t.id })} aria-pressed={p.transport === t.id} className={`flex gap-3 rounded-lg border p-3 text-left transition ${p.transport === t.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted/50"}`}>
                 <t.icon className="mt-0.5 size-4 shrink-0 text-primary" />
                 <span><span className="block text-sm font-medium">{t.label}</span><span className="block text-xs text-muted-foreground">{t.text}</span></span>
@@ -75,11 +94,21 @@ export function DeviceSettings() {
           {unsupported && (
             <Alert variant="destructive"><AlertDescription>This browser can&apos;t talk to {p.transport} printers. Use Chrome or Edge, or choose “Any printer”.</AlertDescription></Alert>
           )}
+          {p.transport === "system" && (
+            <div className="max-w-sm space-y-1.5">
+              <Label htmlFor="sys-printer">Printer</Label>
+              <select id="sys-printer" value={p.systemPrinter} onChange={(e) => update({ systemPrinter: e.target.value })} className="h-9 w-full rounded-md border bg-background px-3 text-sm">
+                <option value="">Choose a printer…</option>
+                {printers.map((x) => <option key={x.name} value={x.name}>{x.displayName || x.name}{x.isDefault ? " (default)" : ""}</option>)}
+              </select>
+              {!printers.length && <p className="text-xs text-muted-foreground">No printers found. Install the printer driver in your system settings, then reopen this page.</p>}
+            </div>
+          )}
           {p.transport === "bridge" && (
             <div className="grid gap-3 rounded-lg bg-muted/40 p-3 sm:grid-cols-2">
               <div className="space-y-1.5"><Label htmlFor="br-url">Bridge address</Label><Input id="br-url" value={p.bridgeUrl} onChange={(e) => update({ bridgeUrl: e.target.value })} /></div>
               <div className="space-y-1.5"><Label htmlFor="br-key">Bridge key</Label><Input id="br-key" type="password" value={p.bridgeKey} onChange={(e) => update({ bridgeKey: e.target.value })} /></div>
-              <p className="text-xs text-muted-foreground sm:col-span-2">Run <code className="rounded bg-background px-1">node print-bridge/bridge.mjs --printer 192.168.1.50 --key YOUR-KEY</code> on a computer in the shop. See print-bridge/README.md.</p>
+              <p className="text-xs text-muted-foreground sm:col-span-2">Run <code className="rounded bg-background px-1">node print-bridge/bridge.mjs --printer 192.168.1.50 --key YOUR-KEY</code> on this computer (the bridge address stays http://127.0.0.1:9123). See print-bridge/README.md.</p>
             </div>
           )}
           {p.transport === "serial" && (
@@ -97,12 +126,13 @@ export function DeviceSettings() {
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between"><Label htmlFor="auto" className="font-normal">Print automatically after each sale</Label><Switch id="auto" checked={p.autoPrint} onCheckedChange={(v) => update({ autoPrint: v })} /></div>
-            <div className="flex items-center justify-between"><Label htmlFor="drawer" className="flex flex-col items-start gap-0.5 font-normal">Open cash drawer on cash sales<span className="text-xs text-muted-foreground">Drawer must be plugged into the printer (direct connections only).</span></Label><Switch id="drawer" checked={p.openDrawer} onCheckedChange={(v) => update({ openDrawer: v })} disabled={p.transport === "browser"} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="drawer" className="flex flex-col items-start gap-0.5 font-normal">Open cash drawer on cash sales<span className="text-xs text-muted-foreground">Drawer must be plugged into the printer (direct connections only).</span></Label><Switch id="drawer" checked={p.openDrawer} onCheckedChange={(v) => update({ openDrawer: v })} disabled={p.transport === "browser" || p.transport === "system"} /></div>
           </div>
           <div className="flex flex-wrap gap-2">
             {["usb", "serial", "bluetooth"].includes(p.transport) && <Button variant="outline" onClick={pair} disabled={unsupported}>Connect printer…</Button>}
+            {p.deviceName && ["usb", "serial", "bluetooth"].includes(p.transport) && <span className="self-center text-xs text-muted-foreground">Using: {p.deviceName}</span>}
             <Button variant="outline" onClick={testPrint}>Print test page</Button>
-            {p.transport !== "browser" && <Button variant="outline" onClick={() => kickDrawer()}>Open drawer</Button>}
+            {p.transport !== "browser" && p.transport !== "system" && <Button variant="outline" onClick={() => kickDrawer()}>Open drawer</Button>}
           </div>
         </CardContent>
       </Card>

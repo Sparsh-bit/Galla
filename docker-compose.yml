@@ -1,4 +1,4 @@
-# Production-like stack: StockPilot + MongoDB (single-node replica set for transactions).
+# Production-like stack: Galla + MongoDB (single-node replica set for transactions).
 # 1) cp env.example .env and fill BETTER_AUTH_SECRET, APP_URL (https), SMTP_URL
 # 2) docker compose up -d --build
 services:

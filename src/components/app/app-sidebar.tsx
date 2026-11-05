@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, Download, LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
 import { useTheme } from "@/components/app/theme";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
@@ -17,7 +17,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
-import { LogoMark } from "./logo";
+import { LogoMark, PoweredBy } from "./logo";
 import { NAV } from "./nav";
 import { useOrg } from "./org-context";
 
@@ -122,6 +122,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
       </SidebarContent>
 
       <SidebarFooter>
+        <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden"><PoweredBy className="flex-col items-start gap-1 text-[9px]" /></div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
@@ -141,6 +142,11 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                 <DropdownMenuItem asChild>
                   <Link href="/account" onClick={close}>
                     <UserRound /> My account
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/download" onClick={close}>
+                    <Download /> Get the apps
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
