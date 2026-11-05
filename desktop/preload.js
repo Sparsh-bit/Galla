@@ -14,5 +14,7 @@ if (location.protocol === "file:") {
   contextBridge.exposeInMainWorld("gallaSetup", {
     current: () => ipcRenderer.invoke("galla:get-url"),
     save: (url) => ipcRenderer.invoke("galla:set-url", url),
+    retry: () => ipcRenderer.invoke("galla:retry"),
+    setup: () => ipcRenderer.invoke("galla:setup"),
   });
 }

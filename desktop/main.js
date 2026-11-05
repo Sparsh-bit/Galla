@@ -34,6 +34,21 @@ function normalizeUrl(raw) {
 let win = null;
 let appOrigin = "";
 
+// Testing against a server on the shop's network (http://192.168.x.x): let Chromium treat it as a secure
+// origin so the camera, offline service worker and secure storage behave exactly as on https.
+// Production servers are https and need nothing here. Must run before the app is ready.
+try {
+  const boot = new URL(readUrlEarly());
+  if (boot.protocol === "http:" && !["localhost", "127.0.0.1"].includes(boot.hostname)) app.commandLine.appendSwitch("unsafely-treat-insecure-origin-as-secure", boot.origin);
+} catch {}
+function readUrlEarly() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(app.getPath("userData"), "config.json"), "utf8")).url || DEFAULT_URL;
+  } catch {
+    return DEFAULT_URL;
+  }
+}
+
 const isApp = (url) => {
   try {
     return !!appOrigin && new URL(url).origin === appOrigin;
@@ -139,6 +154,12 @@ function registerIpc() {
     await printWindow((w) => w.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(String(html))}`), { ...o, kind: "thermal" });
   });
   ipcMain.handle("galla:get-url", () => readUrl());
+  ipcMain.handle("galla:retry", (e) => {
+    if (e.senderFrame?.url.startsWith("file:")) loadApp();
+  });
+  ipcMain.handle("galla:setup", (e) => {
+    if (e.senderFrame?.url.startsWith("file:")) win.loadFile(path.join(__dirname, "setup.html"));
+  });
   ipcMain.handle("galla:set-url", async (e, raw) => {
     if (!e.senderFrame?.url.startsWith("file:")) return { error: "Not allowed" };
     try {
@@ -166,15 +187,34 @@ function menu() {
   );
 }
 
+const stateFile = () => path.join(app.getPath("userData"), "window.json");
+let state = {};
+
+/** Native title bars that blend into Galla: inset traffic lights on macOS, themed caption buttons on Windows. */
+function chrome() {
+  if (process.platform === "darwin") return { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 18, y: 20 } };
+  if (process.platform === "win32") return { titleBarStyle: "hidden", titleBarOverlay: { color: "#fbf7ef", symbolColor: "#14161f", height: 56 } };
+  return {};
+}
+
 function createWindow() {
+  try {
+    state = JSON.parse(fs.readFileSync(stateFile(), "utf8"));
+  } catch {
+    state = {};
+  }
   win = new BrowserWindow({
-    width: 1366,
-    height: 860,
-    minWidth: 900,
-    minHeight: 600,
+    x: state.x,
+    y: state.y,
+    width: state.width ?? 1440,
+    height: state.height ?? 900,
+    minWidth: 1024,
+    minHeight: 640,
     title: "Galla",
+    show: false,
     icon: path.join(__dirname, "build", "icon.png"),
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fbf7ef",
+    ...chrome(),
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
   setupBluetooth(win.webContents);
@@ -190,11 +230,21 @@ function createWindow() {
       if (/^https?:/.test(url)) shell.openExternal(url);
     }
   });
-  win.webContents.on("did-fail-load", (_e, code, desc, url, isMain) => {
-    if (isMain && code !== -3) {
-      dialog.showMessageBox(win, { type: "error", title: "Galla", message: "Can't reach the Galla server", detail: `${desc}\n${url}`, buttons: ["Retry", "Change server"], defaultId: 0 }).then(({ response }) => (response === 0 ? loadApp() : win.loadFile(path.join(__dirname, "setup.html"))));
-    }
+  win.webContents.on("did-fail-load", (_e, code, _desc, url, isMain) => {
+    // -3 is an aborted navigation (normal). Anything else on the main page: show the branded offline screen.
+    if (isMain && code !== -3 && !url.startsWith("file:")) win.loadFile(path.join(__dirname, "offline.html"), { query: { url: appOrigin } });
   });
+  win.once("ready-to-show", () => {
+    if (state.maximized) win.maximize();
+    win.show();
+  });
+  const save = () => {
+    if (!win || win.isMinimized()) return;
+    try {
+      fs.writeFileSync(stateFile(), JSON.stringify({ ...(win.isMaximized() ? state : win.getNormalBounds()), maximized: win.isMaximized() }));
+    } catch {}
+  };
+  win.on("close", save);
   win.on("closed", () => (win = null));
   loadApp();
 }

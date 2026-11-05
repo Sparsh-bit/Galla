@@ -22,8 +22,9 @@
       "main.js",
       "preload.js",
       "setup.html",
-      "build/icon.png",
-      "app-config.json"
+      "offline.html",
+      "app-config.json",
+      "build/icon.png"
     ],
     "directories": {
       "buildResources": "build",
@@ -52,7 +53,8 @@
           ]
         }
       ],
-      "artifactName": "Galla-win-${arch}.${ext}"
+      "artifactName": "Galla-win-${arch}.${ext}",
+      "signAndEditExecutable": true
     },
     "nsis": {
       "oneClick": false,

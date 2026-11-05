@@ -16,7 +16,8 @@
     "bridge": "node print-bridge/bridge.mjs",
     "clean:mac": "find . -name '._*' -not -path './node_modules/*' -delete",
     "dev:phone": "bash scripts/dev-phone.sh",
-    "desktop": "cd desktop && GALLA_URL=${GALLA_URL:-http://localhost:3000} npm start"
+    "desktop": "cd desktop && GALLA_URL=${GALLA_URL:-http://localhost:3000} npm start",
+    "serve:lan": "bash scripts/serve-lan.sh"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

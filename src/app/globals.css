@@ -249,6 +249,15 @@ html.native-app :is(input, textarea, select, [contenteditable], [data-selectable
 html.native-app img { -webkit-user-drag: none; }
 html.native-app[data-platform="ios"] body, html.native-app[data-platform="android"] body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 
+/* Galla desktop app: the window has no system title bar, so the app header is the title bar. */
+html[data-platform^="desktop-"] [data-app-header], html[data-platform^="desktop-"] [data-slot="sidebar-header"] { -webkit-app-region: drag; user-select: none; }
+html[data-platform^="desktop-"] :is(button, a, input, select, textarea, [role="button"], [role="combobox"], [data-slot="sidebar-menu-button"], [data-slot="dropdown-menu-trigger"]) { -webkit-app-region: no-drag; }
+/* macOS: leave room for the traffic lights over the sidebar (and over the header when it is collapsed). */
+html[data-platform="desktop-darwin"] [data-slot="sidebar-header"] { padding-top: 2.6rem; }
+html[data-platform="desktop-darwin"] [data-slot="sidebar"][data-state="collapsed"] ~ [data-slot="sidebar-inset"] [data-app-header] { padding-left: 5.5rem; }
+/* Windows: the minimise/maximise/close buttons sit over the header's right edge. */
+html[data-platform="desktop-win32"] [data-app-header] { padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 0.75rem); }
+
 /* Amber text must stay readable on paper: `text-primary` uses the deeper brand amber. */
 .text-primary { color: var(--brand-deep); }
 .bg-primary .text-primary, .text-primary-foreground .text-primary { color: inherit; }

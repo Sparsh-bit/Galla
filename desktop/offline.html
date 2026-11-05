@@ -1,0 +1,35 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>Galla</title>
+<style>
+  :root { --ink: #14161f; --paper: #fbf7ef; --amber: #f5a524; --deep: #9a5a12; }
+  * { box-sizing: border-box }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 15px -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: radial-gradient(ellipse at 70% 20%, #fde7bd 0, transparent 50%), var(--paper); -webkit-app-region: drag; }
+  main { width: min(420px, 90vw); text-align: center; animation: rise .6s cubic-bezier(.32,.72,0,1) both; }
+  .mark { width: 72px; height: 72px; margin: 0 auto 22px; border-radius: 20px; background: linear-gradient(135deg, #fbbf4a, #e07b12); display: grid; place-items: center; box-shadow: 0 18px 40px -18px #e07b12; animation: pulse 2.4s ease-in-out infinite; }
+  .mark i { width: 36px; height: 18px; border-radius: 6px; background: var(--ink); position: relative; top: 8px; }
+  .mark i::after { content: ""; position: absolute; left: 12px; top: 8px; width: 12px; height: 3px; border-radius: 2px; background: #fbbf4a; }
+  h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.03em; }
+  h1 em { font-family: Georgia, serif; font-weight: 500; color: var(--deep); }
+  p { margin: 0 0 26px; color: #6b6458; line-height: 1.5; }
+  code { font-size: 12px; color: #8a8376; }
+  .row { display: flex; gap: 10px; justify-content: center; -webkit-app-region: no-drag; }
+  button { font: inherit; font-weight: 600; padding: 11px 20px; border-radius: 999px; border: 1px solid #e6dfd1; background: #fff; color: var(--ink); cursor: pointer; transition: transform .09s; }
+  button.primary { background: var(--amber); border-color: var(--amber); color: #2a1b05; }
+  button:active { transform: scale(.97); }
+  @keyframes rise { from { opacity: 0; transform: translateY(12px); filter: blur(6px) } }
+  @keyframes pulse { 50% { transform: scale(1.05) } }
+</style>
+<main>
+  <div class="mark"><i></i></div>
+  <h1>Can’t reach <em>your shop</em> right now</h1>
+  <p>Galla couldn’t connect to the server. Check the internet or Wi-Fi, then try again.<br><code id="u"></code></p>
+  <div class="row"><button class="primary" id="retry">Try again</button><button id="setup">Change server</button></div>
+</main>
+<script>
+  document.getElementById("u").textContent = new URLSearchParams(location.search).get("url") || "";
+  document.getElementById("retry").onclick = () => window.gallaSetup.retry();
+  document.getElementById("setup").onclick = () => window.gallaSetup.setup();
+  addEventListener("online", () => window.gallaSetup.retry());
+</script>
