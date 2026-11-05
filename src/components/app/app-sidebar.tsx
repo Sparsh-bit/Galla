@@ -17,6 +17,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton,
   SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarRail, useSidebar,
 } from "@/components/ui/sidebar";
+import { useT } from "./i18n-provider";
 import { LogoMark, PoweredBy } from "./logo";
 import { NAV } from "./nav";
 import { useOrg } from "./org-context";
@@ -25,6 +26,7 @@ const initials = (s: string) => s.split(/\s+/).map((w) => w[0]).join("").slice(0
 
 export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: string }[]; userEmail: string }) {
   const org = useOrg();
+  const t = useT();
   const pathname = usePathname();
   const router = useRouter();
   const { setOpenMobile, isMobile } = useSidebar();
@@ -65,7 +67,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-64" align="start">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Businesses</DropdownMenuLabel>
+                <DropdownMenuLabel className="text-xs text-muted-foreground">{t("Businesses")}</DropdownMenuLabel>
                 {orgs.map((o) => (
                   <DropdownMenuItem key={o.id} onSelect={() => o.id !== org.orgId && switchTo(o.id)}>
                     <span className="truncate">{o.name}</span>
@@ -75,7 +77,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/onboarding?new=1">
-                    <Plus /> Add a business
+                    <Plus /> {t("Add a business")}
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -90,14 +92,14 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
           if (!items.length) return null;
           return (
             <SidebarGroup key={group.label}>
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarGroupLabel>{t(group.label)}</SidebarGroupLabel>
               <SidebarMenu>
                 {items.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={item.children ? pathname === item.href : active(item.href)} tooltip={item.title}>
+                    <SidebarMenuButton asChild isActive={item.children ? pathname === item.href : active(item.href)} tooltip={t(item.title)}>
                       <Link href={item.href} onClick={close}>
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>{t(item.title)}</span>
                       </Link>
                     </SidebarMenuButton>
                     {item.children && (pathname === item.href || pathname.startsWith(item.href + "/")) && (
@@ -106,7 +108,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                           <SidebarMenuSubItem key={c.href}>
                             <SidebarMenuSubButton asChild isActive={pathname === c.href}>
                               <Link href={c.href} onClick={close}>
-                                {c.title}
+                                {t(c.title)}
                               </Link>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
@@ -141,20 +143,20 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
               <DropdownMenuContent className="w-56" side={isMobile ? "bottom" : "right"} align="end">
                 <DropdownMenuItem asChild>
                   <Link href="/account" onClick={close}>
-                    <UserRound /> My account
+                    <UserRound /> {t("My account")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/download" onClick={close}>
-                    <Download /> Get the apps
+                    <Download /> {t("Get the apps")}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>
-                  {resolvedTheme === "dark" ? <Sun /> : <Moon />} {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
+                  {resolvedTheme === "dark" ? <Sun /> : <Moon />} {resolvedTheme === "dark" ? t("Light mode") : t("Dark mode")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={signOut} variant="destructive">
-                  <LogOut /> Sign out
+                  <LogOut /> {t("Sign out")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

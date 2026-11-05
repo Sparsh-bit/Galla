@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/components/app/i18n-provider";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 
 export function SignInForm({ next }: { next: string }) {
+  const t = useT();
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +51,8 @@ export function SignInForm({ next }: { next: string }) {
   return (
     <div className="space-y-6">
       <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
-        <p className="text-sm text-muted-foreground">Sign in to your Galla account.</p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t("Welcome back")}</h1>
+        <p className="text-sm text-muted-foreground">{t("Sign in to your Galla account.")}</p>
       </div>
       {unverified && (
         <Alert>
@@ -69,26 +71,26 @@ export function SignInForm({ next }: { next: string }) {
       )}
       <form onSubmit={onSubmit}>
         <FieldGroup>
-          <FormField label="Email">
+          <FormField label={t("Email")}>
             <Input name="email" type="email" autoComplete="email" required autoFocus />
           </FormField>
-          <FormField label="Password">
+          <FormField label={t("Password")}>
             <PasswordInput name="password" autoComplete="current-password" required />
           </FormField>
           <div className="-mt-2 text-right">
             <Link href="/forgot-password" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-              Forgot password?
+              {t("Forgot password?")}
             </Link>
           </div>
           <Button type="submit" size="lg" disabled={pending} className="w-full">
-            {pending && <Spinner />} Sign in
+            {pending && <Spinner />} {t("Sign in")}
           </Button>
         </FieldGroup>
       </form>
       <p className="text-center text-sm text-muted-foreground">
-        New to Galla?{" "}
+        {t("New to Galla?")}{" "}
         <Link href="/sign-up" className="font-medium text-foreground underline-offset-4 hover:underline">
-          Create an account
+          {t("Create an account")}
         </Link>
       </p>
     </div>

@@ -12,11 +12,14 @@ export async function createScanSession(ctx: Ctx) {
   return { token, expiresAt: Date.now() + TTL_MS };
 }
 
+/** Where a phone scan should go on the computer: the screen that is open, the sale (POS), or the product. */
+export type ScanTarget = "here" | "sale" | "product";
+
 /** Phone side: only members of the same business can push to the session. */
-export async function pushScan(ctx: Ctx, token: string, code: string) {
+export async function pushScan(ctx: Ctx, token: string, code: string, target: ScanTarget = "here") {
   const r = await ScanSession.updateOne(
     { orgId: ctx.orgId, tokenHash: hash(token), expiresAt: { $gt: new Date() } },
-    { $inc: { seq: 1 }, $push: { events: { $each: [{ code, at: new Date() }], $slice: -50 } } },
+    { $inc: { seq: 1 }, $push: { events: { $each: [{ code, target, at: new Date() }], $slice: -50 } } },
   );
   return r.matchedCount === 1;
 }

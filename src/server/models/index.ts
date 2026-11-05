@@ -510,7 +510,7 @@ const scanSessionSchema = new Schema(
     tokenHash: { type: String, required: true, unique: true },
     userId: { type: String, required: true },
     seq: { type: Number, default: 0 },
-    events: { type: [{ code: String, at: Date, _id: false }], default: [] },
+    events: { type: [{ code: String, target: { type: String, default: "here" }, at: Date, _id: false }], default: [] },
     expiresAt: { type: Date, required: true, expires: 0 },
   },
   { versionKey: false },

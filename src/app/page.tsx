@@ -89,6 +89,12 @@ export default async function HomePage() {
 
             <div className="landing-preview relative mx-auto w-full max-w-[560px] lg:mr-0">
               <div className="preview-halo" aria-hidden="true" />
+              {/* Mid-century / Bauhaus shapes: a sun disc, a half moon and a bar, like a shop sign. */}
+              <svg aria-hidden="true" viewBox="0 0 400 400" className="float-y pointer-events-none absolute -right-16 -top-20 hidden size-72 lg:block [animation-duration:9s]">
+                <circle cx="250" cy="140" r="92" fill="oklch(0.86 0.14 78 / 0.55)" />
+                <path d="M90 300a80 80 0 0 1 160 0z" fill="none" stroke="#14161f" strokeOpacity="0.12" strokeWidth="10" />
+                <rect x="268" y="262" width="96" height="22" rx="11" fill="oklch(0.7 0.11 175 / 0.35)" />
+              </svg>
               <div className="relative z-10 overflow-hidden rounded-[1.6rem] border border-white bg-white p-3 shadow-[0_30px_90px_-35px_rgba(120,70,10,0.35)]">
                 <div className="flex h-9 items-center justify-between px-2 text-[10px] text-slate-400">
                   <span className="flex gap-1.5"><i className="size-2 rounded-full bg-[#f2c879]" /><i className="size-2 rounded-full bg-[#e8a77a]" /><i className="size-2 rounded-full bg-[#d6d9e2]" /></span>
@@ -137,7 +143,7 @@ export default async function HomePage() {
           </div>
           <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {FEATURES.map(({ icon: Icon, title, text }, i) => (
-              <article key={title} data-delay={(i % 4) * 90} className="reveal hover-lift feature-card group relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+              <article key={title} data-delay={(i % 4) * 90} className="reveal hover-lift feature-card geo-corner group relative overflow-hidden rounded-2xl border border-border bg-card p-6">
                 <div className="feature-glow" aria-hidden="true" />
                 <span className="relative mb-5 grid size-11 place-items-center rounded-xl bg-primary/15 text-brand-deep"><Icon className="size-5" /></span>
                 <h3 className="relative text-base font-bold tracking-tight">{title}</h3>
