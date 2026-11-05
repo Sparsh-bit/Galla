@@ -6,7 +6,7 @@ import { env } from "@/env";
 import { readLimitedForm } from "@/lib/limited-form-data";
 import { can } from "@/lib/permissions";
 import { loadCtx } from "@/server/context";
-import { sameOrigin } from "@/server/http";
+import { csrfOk } from "@/server/http";
 import { RateLimit } from "@/server/models";
 
 const MAX_IMAGE = 2 * 1024 * 1024;
@@ -28,7 +28,7 @@ function sniff(b: Buffer): "png" | "jpg" | "webp" | "pdf" | null {
  * served only to that business (/api/docs).
  */
 export async function POST(req: Request) {
-  if (!sameOrigin(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!csrfOk(req)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const declaredSize = Number(req.headers.get("content-length"));
   if (Number.isFinite(declaredSize) && declaredSize > MAX_MULTIPART) {
     return NextResponse.json({ error: "Upload is too large" }, { status: 413 });

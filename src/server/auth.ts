@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins/organization";
 import { memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { twoFactor } from "better-auth/plugins/two-factor";
+import { bearer } from "better-auth/plugins/bearer";
 import { MongoClient, ObjectId } from "mongodb";
 import { env } from "@/env";
 import { sendMail } from "./mail";
@@ -109,6 +110,8 @@ export const auth = betterAuth({
       },
     }),
     twoFactor({ issuer: "Galla" }),
+    // Desktop/phone apps and API clients send the session token as `Authorization: Bearer`.
+    bearer(),
     nextCookies(),
   ],
 });

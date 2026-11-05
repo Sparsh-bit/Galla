@@ -66,7 +66,7 @@ describe("unauthenticated", () => {
   it.each(ACTIONS)("%s.%s refuses without a session", async (mod, name) => {
     current = null;
     const res = await mods[mod][name]({});
-    expect(res).toEqual({ ok: false, error: "Your session has expired. Please sign in again." });
+    expect(res).toEqual({ ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." });
   });
 });
 
