@@ -197,8 +197,9 @@ function notify(title, body, onClick) {
 }
 
 async function askToRestart(version) {
-  const { response } = await dialog.showMessageBox(win, { type: "info", title: "Galla", message: `Galla ${version} is ready to install`, detail: "Restart now to update. Anything you saved is kept.", buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1 });
-  if (response === 0) updater.quitAndInstall();
+  const { response } = await dialog.showMessageBox(win, { type: "info", title: "Galla", message: `Galla ${version} is ready to install`, detail: "Restart now to update (takes a few seconds), or it installs automatically the next time you close Galla. Anything you saved is kept.", buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1 });
+  // Silent install, then Galla reopens on its own: no installer screens for the user.
+  if (response === 0) updater.quitAndInstall(true, true);
 }
 
 async function askToDownload(version) {
@@ -214,6 +215,8 @@ function setupUpdates() {
     return;
   }
   const selfInstall = process.platform !== "darwin" || macSelfInstall();
+  // Downloads in the background; if the user picks "Later" it installs silently the next time Galla closes,
+  // so the next launch is already the new version.
   updater.autoDownload = selfInstall;
   updater.autoInstallOnAppQuit = selfInstall;
   updater.logger = null; // "no release yet" / offline are normal; we simply check again later
