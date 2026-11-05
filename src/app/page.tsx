@@ -7,6 +7,9 @@ import { redirect } from "next/navigation";
 import { Logo, PoweredBy } from "@/components/app/logo";
 import { Button } from "@/components/ui/button";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { AppDownloads } from "@/components/landing/app-downloads";
+import { env } from "@/env";
+import { DEFAULT_REQUEST_ACCESS_URL } from "@/lib/downloads";
 
 export const metadata: Metadata = {
   title: "Galla — Your shop’s digital cash box",
@@ -28,8 +31,18 @@ const FEATURES = [
 
 const COUNTERS = ["Kirana & supermarket", "Pharmacy", "Mobile & electronics", "Hardware", "Garments & footwear", "Distributors", "Cosmetics & stationery", "Bakery", "Multi-branch shops"];
 
+/** Sends visitors to the Concilio Solutions booking page (Galla is invitation-only). */
+function RequestAccess({ href, className }: { href: string; className: string }) {
+  return (
+    <Button asChild size="lg" className={className}>
+      <a href={href} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a>
+    </Button>
+  );
+}
+
 export default async function HomePage() {
   if (await auth.api.getSession({ headers: await headers() })) redirect("/dashboard");
+  const access = env.REQUEST_ACCESS_URL ?? DEFAULT_REQUEST_ACCESS_URL;
 
   return (
     <div className="landing-page min-h-dvh overflow-hidden bg-background text-foreground">
@@ -40,11 +53,11 @@ export default async function HomePage() {
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
             <a href="#offline" className="transition-colors hover:text-foreground">Offline</a>
             <a href="#counters" className="transition-colors hover:text-foreground">Who it’s for</a>
-            <Link href="/download" className="transition-colors hover:text-foreground">Download</Link>
+            <a href="#download" className="transition-colors hover:text-foreground">Download</a>
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm"><Link href="/sign-in">Sign in</Link></Button>
-            <Button asChild size="sm" className="rounded-full px-4 font-semibold"><Link href="/sign-up">Get started <ArrowRight className="ml-1 size-4" /></Link></Button>
+            <Button asChild size="sm" className="rounded-full px-4 font-semibold"><a href={access} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a></Button>
           </div>
         </div>
       </header>
@@ -65,9 +78,9 @@ export default async function HomePage() {
                 Galla runs the whole counter: selling, stock, credit and tax, on the devices your shop already owns. One app instead of four habits.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg" className="h-12 rounded-full px-6 text-sm font-semibold shadow-lg shadow-primary/30"><Link href="/sign-up">Create your shop <ArrowRight className="ml-1 size-4" /></Link></Button>
-                <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white/70 px-6"><Link href="/sign-in">Sign in</Link></Button>
-                <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-5"><Link href="/download"><Download className="mr-1 size-4" /> Mac · Windows · Phone</Link></Button>
+                <RequestAccess href={access} className="h-12 rounded-full px-6 text-sm font-semibold shadow-lg shadow-primary/30" />
+                <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white/70 px-6"><a href="#download"><Download className="mr-1 size-4" /> Download for Mac & Windows</a></Button>
+                <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-5"><Link href="/sign-in">Try the web demo</Link></Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
                 {["USB, Bluetooth & camera scanning", "Any printer", "Works offline"].map((l) => <span key={l} className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-emerald-600" />{l}</span>)}
@@ -142,7 +155,7 @@ export default async function HomePage() {
                 <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-primary">Offline billing</p>
                 <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl">Internet gone? <span className="font-[Georgia,serif] font-medium italic text-primary">Billing isn’t.</span></h2>
                 <p className="mt-4 max-w-md text-sm leading-6 text-white/70 sm:text-base">Most cloud tools freeze when the signal drops. Galla keeps selling and syncs the moment you are back.</p>
-                <Button asChild size="lg" className="mt-8 h-12 rounded-full px-6 font-semibold"><Link href="/sign-up">Start billing <ArrowRight className="ml-1 size-4" /></Link></Button>
+                <RequestAccess href={access} className="mt-8 h-12 rounded-full px-6 font-semibold" />
               </div>
               <ol className="space-y-3">
                 {[["Register the till", "Open the POS once online: products, stock, serials and customers download."], ["Signal drops", "The POS opens from cache and finds everything locally."], ["Bills keep their number", "Each till has its own GST-compliant series."], ["Back online", "Auto-sync. Conflicts are flagged for review, never lost."]].map(([t, d], i) => (
@@ -167,14 +180,22 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <section id="download" className="mx-auto max-w-5xl scroll-mt-20 px-4 pb-20 sm:px-6 sm:pb-28">
+          <div className="reveal mb-10 max-w-2xl">
+            <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-brand-deep">Get the apps</p>
+            <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl">Galla on <span className="serif-accent">every counter.</span></h2>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground sm:text-base">Install Galla on your shop’s Mac or Windows PC. Silent printing to any printer, scanners that just work, and billing that keeps going offline. iPhone, iPad and Android apps are on the way.</p>
+          </div>
+          <div className="reveal"><AppDownloads /></div>
+        </section>
+
         <section className="px-4 pb-20 sm:px-6 sm:pb-28">
           <div className="reveal mx-auto max-w-4xl rounded-[2rem] border border-primary/30 bg-gradient-to-br from-amber-50 to-white px-6 py-14 text-center shadow-[0_30px_80px_-50px_rgba(180,100,10,0.5)] sm:px-12">
             <Logo className="text-4xl" />
             <p className="mt-6 font-[Georgia,serif] text-2xl italic text-foreground sm:text-3xl">Har dukaan ka <span className="serif-accent not-italic">digital galla.</span></p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild size="lg" className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-primary/30"><Link href="/sign-up">Create your shop <ArrowRight className="ml-1 size-4" /></Link></Button>
-              <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><Link href="/download">Download the apps</Link></Button>
-              <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-6"><a href="https://concilio.solutions" target="_blank" rel="noopener noreferrer">Book a free demo</a></Button>
+              <RequestAccess href={access} className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-primary/30" />
+              <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><a href="#download">Download the apps</a></Button>
             </div>
           </div>
         </section>
