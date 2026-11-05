@@ -6,7 +6,7 @@ import { animate, stagger } from "animejs";
 /** Hero entrance, scroll reveals and count-ups, following the motion of the Galla film. */
 export function LandingMotion() {
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("lite");
     const reveals = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
     if (reduce) {
       reveals.forEach((el) => el.classList.add("in"));

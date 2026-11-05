@@ -40,7 +40,7 @@ export function PageBody({ children, className = "" }: { children: React.ReactNo
   const pathname = usePathname();
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !bodyRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.documentElement.classList.contains("lite") || !bodyRef.current) return;
     const targets = Array.from(bodyRef.current.children) as HTMLElement[];
     if (!targets.length) return;
     const entrance = animate(targets, {

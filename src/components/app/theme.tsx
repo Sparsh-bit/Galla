@@ -1,11 +1,9 @@
 "use client";
 import { useSyncExternalStore } from "react";
+import { THEME_KEY } from "@/lib/boot-scripts";
 
 export type Theme = "light" | "dark" | "system";
-const KEY = "theme";
-
-/** Light by default; dark only when the user picks it. Runs before hydration (via next/script beforeInteractive) to avoid a flash of the wrong theme. */
-export const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("${KEY}")||"light";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light"}catch(e){}})()`;
+const KEY = THEME_KEY;
 
 const listeners = new Set<() => void>();
 
