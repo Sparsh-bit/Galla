@@ -53,3 +53,7 @@ next-env.d.ts
 # desktop app
 /desktop/node_modules/
 /desktop/dist/
+/mobile/node_modules/
+/mobile/ios/App/Pods/
+/mobile/android/.gradle/
+/mobile/android/build/

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Check, ChevronsUpDown, LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
+import { Check, ChevronsUpDown, Download, LogOut, Moon, Plus, Sun, UserRound } from "lucide-react";
 import { useTheme } from "@/components/app/theme";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
@@ -142,6 +142,11 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                 <DropdownMenuItem asChild>
                   <Link href="/account" onClick={close}>
                     <UserRound /> My account
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/download" onClick={close}>
+                    <Download /> Get the apps
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}>

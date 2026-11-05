@@ -18,6 +18,10 @@ const schema = z.object({
   ENCRYPTION_KEY: z.string().min(32).optional(),
   // Extra hosts the GST e-invoice client may call (comma separated, e.g. a GSP or a local test server).
   NIC_EXTRA_HOSTS: z.string().optional(),
+  // Where installers are hosted (a GitHub "latest release" download URL by default).
+  DESKTOP_RELEASE_BASE: z.string().optional(),
+  IOS_APP_URL: z.string().optional(),
+  ANDROID_APP_URL: z.string().optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {
   path: ["MAIL_FROM"],
   message: "set MAIL_FROM to a sender on a domain verified in Resend, e.g. Galla <no-reply@yourdomain.com>",

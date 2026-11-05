@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookUser, Boxes, Check, FileText, Printer, ReceiptText, ScanLine, ShieldCheck, Smartphone, Store, Users, WifiOff } from "lucide-react";
+import { ArrowRight, BookUser, Download, Boxes, Check, FileText, Printer, ReceiptText, ScanLine, ShieldCheck, Smartphone, Store, Users, WifiOff } from "lucide-react";
 import { auth } from "@/server/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -40,6 +40,7 @@ export default async function HomePage() {
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
             <a href="#offline" className="transition-colors hover:text-foreground">Offline</a>
             <a href="#counters" className="transition-colors hover:text-foreground">Who it’s for</a>
+            <Link href="/download" className="transition-colors hover:text-foreground">Download</Link>
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm"><Link href="/sign-in">Sign in</Link></Button>
@@ -66,6 +67,7 @@ export default async function HomePage() {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Button asChild size="lg" className="h-12 rounded-full px-6 text-sm font-semibold shadow-lg shadow-primary/30"><Link href="/sign-up">Create your shop <ArrowRight className="ml-1 size-4" /></Link></Button>
                 <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white/70 px-6"><Link href="/sign-in">Sign in</Link></Button>
+                <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-5"><Link href="/download"><Download className="mr-1 size-4" /> Mac · Windows · Phone</Link></Button>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-muted-foreground">
                 {["USB, Bluetooth & camera scanning", "Any printer", "Works offline"].map((l) => <span key={l} className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-emerald-600" />{l}</span>)}
@@ -171,7 +173,8 @@ export default async function HomePage() {
             <p className="mt-6 font-[Georgia,serif] text-2xl italic text-foreground sm:text-3xl">Har dukaan ka <span className="serif-accent not-italic">digital galla.</span></p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button asChild size="lg" className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-primary/30"><Link href="/sign-up">Create your shop <ArrowRight className="ml-1 size-4" /></Link></Button>
-              <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><a href="https://concilio.solutions" target="_blank" rel="noopener noreferrer">Book a free demo</a></Button>
+              <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><Link href="/download">Download the apps</Link></Button>
+              <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-6"><a href="https://concilio.solutions" target="_blank" rel="noopener noreferrer">Book a free demo</a></Button>
             </div>
           </div>
         </section>

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono, Newsreader } from "next/font/google";
 import { headers } from "next/headers";
 import Script from "next/script";
 import { THEME_SCRIPT } from "@/components/app/theme";
+import { NativeShell } from "@/components/app/native-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -27,6 +28,7 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
@@ -37,6 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <Script id="theme" strategy="beforeInteractive" nonce={nonce}>
           {THEME_SCRIPT}
         </Script>
+        <NativeShell />
         <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         <Toaster richColors position="top-right" closeButton />
       </body>

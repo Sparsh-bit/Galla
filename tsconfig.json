@@ -41,6 +41,5 @@
   "exclude": [
     "node_modules",
     "**/._*",
-    ".data"
-  ]
+    ".data", "desktop", "mobile"]
 }
