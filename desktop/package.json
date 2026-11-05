@@ -1,15 +1,16 @@
 {
   "name": "galla-desktop",
   "productName": "Galla",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Galla inventory management: desktop app for macOS and Windows",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
     "dist:mac": "electron-builder --mac dmg zip --x64 --arm64",
-    "dist:win": "electron-builder --win nsis portable",
-    "dist": "electron-builder --mac --win"
+    "dist:win": "electron-builder --win nsis --x64",
+    "dist": "electron-builder --mac --win",
+    "dist:mac:unsigned": "electron-builder --mac dmg zip --x64 --arm64 -c.mac.identity=- -c.mac.notarize=false"
   },
   "devDependencies": {
     "electron": "^36.0.0",
@@ -37,7 +38,15 @@
         "zip"
       ],
       "artifactName": "Galla-mac-${arch}.${ext}",
-      "identity": "-"
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true,
+      "extendInfo": {
+        "NSCameraUsageDescription": "Galla uses the camera to scan product barcodes.",
+        "NSBluetoothAlwaysUsageDescription": "Galla connects to Bluetooth receipt printers and barcode scanners."
+      }
     },
     "win": {
       "target": [
@@ -55,7 +64,12 @@
         }
       ],
       "artifactName": "Galla-win-${arch}.${ext}",
-      "signAndEditExecutable": true
+      "signAndEditExecutable": true,
+      "signtoolOptions": {
+        "publisherName": [
+          "Concilio Solutions"
+        ]
+      }
     },
     "nsis": {
       "oneClick": false,
