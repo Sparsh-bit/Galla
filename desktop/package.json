@@ -36,7 +36,8 @@
         "dmg",
         "zip"
       ],
-      "artifactName": "Galla-mac-${arch}.${ext}"
+      "artifactName": "Galla-mac-${arch}.${ext}",
+      "identity": "-"
     },
     "win": {
       "target": [
@@ -68,10 +69,18 @@
       {
         "provider": "github",
         "owner": "Sparsh-bit",
-        "repo": "Inventory",
+        "repo": "galla-releases",
         "releaseType": "release"
       }
-    ]
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableCookieEncryption": true,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "enableEmbeddedAsarIntegrityValidation": true,
+      "onlyLoadAppFromAsar": true
+    }
   },
   "dependencies": {
     "electron-updater": "^6.6.2"
