@@ -66,7 +66,7 @@ function loadApp() {
   } catch {
     return win.loadFile(path.join(__dirname, "setup.html"));
   }
-  return win.loadURL(`${appOrigin}/pos`);
+  return win.loadURL(`${appOrigin}/dashboard`);
 }
 
 /* ---------- native device pickers (Web Serial / WebUSB / Web Bluetooth) ---------- */
@@ -220,8 +220,16 @@ function setupUpdates() {
   updater.autoDownload = selfInstall;
   updater.autoInstallOnAppQuit = selfInstall;
   updater.logger = null; // "no release yet" / offline are normal; we simply check again later
-  updater.on("error", () => undefined);
+  let found = null;
+  // If an update was found but couldn't be downloaded or verified, don't fail silently: send the user to the download page once.
+  updater.on("error", () => {
+    if (!found || promptedFor === found) return;
+    promptedFor = found;
+    notify("Galla update available", `Version ${found} is ready to download.`, () => askToDownload(found));
+    askToDownload(found);
+  });
   updater.on("update-available", ({ version }) => {
+    found = version;
     if (selfInstall || promptedFor === version) return;
     promptedFor = version;
     notify("Galla update available", `Version ${version} is ready to download.`, () => askToDownload(version));

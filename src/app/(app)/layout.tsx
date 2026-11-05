@@ -1,8 +1,7 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { ScanBarcode } from "lucide-react";
 import { can } from "@/lib/permissions";
-import { auth } from "@/server/auth";
 import { getOrgSettings, requireCtx } from "@/server/context";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { CommandMenu } from "@/components/app/command-menu";
@@ -16,11 +15,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const ctx = await requireCtx();
-  const [settings, orgs, cookieStore] = await Promise.all([
-    getOrgSettings(ctx.orgId),
-    auth.api.listOrganizations({ headers: await headers() }),
-    cookies(),
-  ]);
+  const [settings, cookieStore] = await Promise.all([getOrgSettings(ctx.orgId), cookies()]);
 
   return (
     <OrgProvider
@@ -35,7 +30,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <UpdateNotifier />
       <DeviceBridge />
       <SidebarProvider defaultOpen={cookieStore.get("sidebar_state")?.value !== "false"}>
-        <AppSidebar orgs={orgs.map((o) => ({ id: o.id, name: o.name }))} userEmail={ctx.userEmail} />
+        <AppSidebar orgs={ctx.orgs ?? []} userEmail={ctx.userEmail} />
         <SidebarInset className="min-w-0">
           <header data-app-header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-4">
             <SidebarTrigger className="-ml-1" />

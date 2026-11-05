@@ -16,6 +16,8 @@ export interface Ctx {
   role: Role;
   ip?: string;
   ua?: string;
+  /** Every business this user belongs to (for the business switcher). */
+  orgs?: { id: string; name: string }[];
 }
 
 export class AppError extends Error {
@@ -37,23 +39,30 @@ export const loadCtx = cache(async (): Promise<Ctx | null> => {
   const db = connection.db!;
   const userId = new Types.ObjectId(session.user.id);
   const active = session.session.activeOrganizationId;
-  // The active business, or (after being removed from it) the first business the user still belongs to.
-  const member =
-    (active ? await db.collection("member").findOne({ organizationId: new Types.ObjectId(active), userId }, { projection: { role: 1, organizationId: 1 } }) : null) ??
-    (await db.collection("member").findOne({ userId }, { projection: { role: 1, organizationId: 1 }, sort: { createdAt: 1 } }));
+  // One round trip: all of the user's businesses with their names. The active one wins, otherwise the
+  // oldest (e.g. after being removed from the active one). Each extra query costs a full network hop to Atlas.
+  const memberships = await db
+    .collection("member")
+    .aggregate<{ role: unknown; organizationId: Types.ObjectId; name?: string }>([
+      { $match: { userId } },
+      { $sort: { createdAt: 1 } },
+      { $lookup: { from: "organization", localField: "organizationId", foreignField: "_id", as: "org", pipeline: [{ $project: { name: 1 } }] } },
+      { $unwind: "$org" },
+      { $project: { role: 1, organizationId: 1, name: "$org.name" } },
+    ])
+    .toArray();
+  const member = memberships.find((m) => active && String(m.organizationId) === active) ?? memberships[0];
   if (!member || !isRole(member.role)) return null;
-  const orgId = String(member.organizationId);
-  const org = await db.collection("organization").findOne({ _id: member.organizationId }, { projection: { name: 1 } });
-  if (!org) return null;
   return {
     userId: session.user.id,
     userName: session.user.name,
     userEmail: session.user.email,
-    orgId,
-    orgName: String(org.name),
+    orgId: String(member.organizationId),
+    orgName: String(member.name),
     role: member.role,
     ip: h.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? undefined,
     ua: h.get("user-agent") ?? undefined,
+    orgs: memberships.map((m) => ({ id: String(m.organizationId), name: String(m.name) })),
   };
 });
 
