@@ -1,7 +1,7 @@
 // Galla desktop shell (macOS + Windows). Loads your Galla server in a native window and adds what a
 // browser can't do alone: device pickers for USB/serial/Bluetooth printers and scanners, and silent
 // printing to any installed printer.
-const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, Notification, dialog, ipcMain, powerMonitor, session, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -173,6 +173,89 @@ function registerIpc() {
   });
 }
 
+/* ---------- updates ---------- */
+// Screens and features come from the server, so code changes reach users on every deploy (the web app
+// shows a "new version is ready" prompt). This updater is for the desktop app itself: it checks the
+// GitHub releases when online and tells the user. Windows downloads and installs on restart; macOS
+// needs a signed app to self-install, so until then it points to the download page.
+const DOWNLOAD_PAGE = "https://galla.concilio.solutions/#download";
+const macSelfInstall = () => {
+  try {
+    return !!JSON.parse(fs.readFileSync(path.join(__dirname, "app-config.json"), "utf8")).macSelfInstall;
+  } catch {
+    return false;
+  }
+};
+let updater = null;
+let promptedFor = null;
+
+function notify(title, body, onClick) {
+  if (!Notification.isSupported()) return onClick?.();
+  const n = new Notification({ title, body });
+  if (onClick) n.on("click", onClick);
+  n.show();
+}
+
+async function askToRestart(version) {
+  const { response } = await dialog.showMessageBox(win, { type: "info", title: "Galla", message: `Galla ${version} is ready to install`, detail: "Restart now to update. Anything you saved is kept.", buttons: ["Restart now", "Later"], defaultId: 0, cancelId: 1 });
+  if (response === 0) updater.quitAndInstall();
+}
+
+async function askToDownload(version) {
+  const { response } = await dialog.showMessageBox(win, { type: "info", title: "Galla", message: `Galla ${version} is available`, detail: "Download the new version and replace the app in Applications.", buttons: ["Download", "Later"], defaultId: 0, cancelId: 1 });
+  if (response === 0) shell.openExternal(DOWNLOAD_PAGE);
+}
+
+function setupUpdates() {
+  if (!app.isPackaged) return;
+  try {
+    updater = require("electron-updater").autoUpdater;
+  } catch {
+    return;
+  }
+  const selfInstall = process.platform !== "darwin" || macSelfInstall();
+  updater.autoDownload = selfInstall;
+  updater.autoInstallOnAppQuit = selfInstall;
+  updater.logger = null; // "no release yet" / offline are normal; we simply check again later
+  updater.on("error", () => undefined);
+  updater.on("update-available", ({ version }) => {
+    if (selfInstall || promptedFor === version) return;
+    promptedFor = version;
+    notify("Galla update available", `Version ${version} is ready to download.`, () => askToDownload(version));
+    askToDownload(version);
+  });
+  updater.on("update-downloaded", ({ version }) => {
+    if (promptedFor === version) return;
+    promptedFor = version;
+    notify("Galla update ready", `Version ${version} installs when you restart Galla.`, () => askToRestart(version));
+    askToRestart(version);
+  });
+  const check = () => updater.checkForUpdates().catch(() => undefined);
+  setTimeout(check, 8_000);
+  setInterval(check, 60 * 60 * 1000);
+  powerMonitor.on("resume", check);
+  ipcMain.on("galla:online", check);
+}
+
+/** The server can require a newer desktop app (MIN_DESKTOP_VERSION), e.g. before a subscription change. */
+const older = (a, b) => {
+  const x = a.split(".").map(Number);
+  const y = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+  return false;
+};
+async function enforceMinimumVersion() {
+  if (!appOrigin) return;
+  try {
+    const res = await fetch(`${appOrigin}/api/version`, { cache: "no-store" });
+    const { minDesktopVersion } = await res.json();
+    if (!minDesktopVersion || !older(app.getVersion(), minDesktopVersion)) return;
+    await dialog.showMessageBox(win, { type: "warning", title: "Galla", message: "Please update Galla", detail: `This version (${app.getVersion()}) is no longer supported. Version ${minDesktopVersion} or newer is required.`, buttons: ["Get the update"] });
+    if (updater && (process.platform !== "darwin" || macSelfInstall())) updater.checkForUpdates().catch(() => shell.openExternal(DOWNLOAD_PAGE));
+    else shell.openExternal(DOWNLOAD_PAGE);
+  } catch {}
+}
+
 function menu() {
   const mac = process.platform === "darwin";
   Menu.setApplicationMenu(
@@ -182,7 +265,7 @@ function menu() {
       { role: "editMenu" },
       { label: "View", submenu: [{ role: "togglefullscreen" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, ...(app.isPackaged ? [] : [{ role: "toggleDevTools" }])] },
       { role: "windowMenu" },
-      { role: "help", submenu: [{ label: "Galla by Concilio Solutions", click: () => shell.openExternal("https://concilio.solutions") }, ...(mac ? [] : [{ role: "about" }])] },
+      { role: "help", submenu: [{ label: "Check for updates…", click: () => (updater ? updater.checkForUpdates().then((r) => !r?.isUpdateAvailable && dialog.showMessageBox(win, { message: "Galla is up to date", detail: `You have version ${app.getVersion()}.` })).catch(() => dialog.showMessageBox(win, { message: "Couldn't check for updates", detail: "Check your internet connection and try again." })) : dialog.showMessageBox(win, { message: "Updates are available in the installed app" })) }, { type: "separator" }, { label: "Galla by Concilio Solutions", click: () => shell.openExternal("https://concilio.solutions") }, ...(mac ? [] : [{ role: "about" }])] },
     ]),
   );
 }
@@ -215,7 +298,8 @@ function createWindow() {
     icon: path.join(__dirname, "build", "icon.png"),
     backgroundColor: "#fbf7ef",
     ...chrome(),
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    // spellcheck off and the bytecode cache on keep start-up and typing light on low-end PCs.
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false, v8CacheOptions: "bypassHeatCheck" },
   });
   setupBluetooth(win.webContents);
   // Keep the app in this window; links to other sites open in the normal browser.
@@ -263,6 +347,8 @@ else {
     setupDevices(session.defaultSession);
     menu();
     createWindow();
+    setupUpdates();
+    win.webContents.once("did-finish-load", enforceMinimumVersion);
     app.on("activate", () => BrowserWindow.getAllWindows().length === 0 && createWindow());
   });
   app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());

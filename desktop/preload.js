@@ -18,3 +18,6 @@ if (location.protocol === "file:") {
     setup: () => ipcRenderer.invoke("galla:setup"),
   });
 }
+
+// Lets the main process check for app updates as soon as the internet comes back.
+addEventListener("online", () => ipcRenderer.send("galla:online"));
