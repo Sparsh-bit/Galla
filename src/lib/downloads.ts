@@ -10,3 +10,6 @@ export const DESKTOP: DownloadItem[] = [
 ];
 
 export const releaseUrl = (base: string | undefined, file: string) => `${(base || `${RELEASES}/latest/download`).replace(/\/$/, "")}/${file}`;
+
+/** Placeholder until the Concilio Solutions booking page is ready; override with REQUEST_ACCESS_URL. */
+export const DEFAULT_REQUEST_ACCESS_URL = "https://concilio.solutions";
