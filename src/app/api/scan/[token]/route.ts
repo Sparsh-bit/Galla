@@ -9,9 +9,10 @@ export async function POST(req: Request, { params }: RouteContext<"/api/scan/[to
   const ctx = await loadCtx();
   if (!ctx) return NextResponse.json({ error: "Please sign in" }, { status: 401 });
   const { token } = await params;
-  const body = (await req.json().catch(() => null)) as { code?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { code?: unknown; target?: unknown } | null;
   const code = typeof body?.code === "string" ? body.code.trim() : "";
   if (!/^[\x20-\x7e]{1,64}$/.test(code) || token.length > 100) return NextResponse.json({ error: "Invalid code" }, { status: 400 });
-  const ok = await pushScan(ctx, token, code);
+  const target = body?.target === "sale" || body?.target === "product" ? body.target : "here";
+  const ok = await pushScan(ctx, token, code, target);
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "This pairing has expired. Scan the QR code on the computer again." }, { status: 410 });
 }

@@ -13,7 +13,8 @@ import type { VariantHit } from "@/server/services/products";
 import { useOrg } from "@/components/app/org-context";
 import { SelectField } from "@/components/app/select-field";
 import { useSearch } from "@/components/app/use-search";
-import { CameraScanButton, PhoneScanButton } from "@/components/scanner/scan-tools";
+import { CameraScanButton } from "@/components/scanner/scan-tools";
+import { PhoneLinkButton } from "@/components/scanner/phone-link";
 import { scanFeedback, useScanner } from "@/components/scanner/use-scanner";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -359,7 +360,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
             </InputGroupAddon>
           </InputGroup>
           <CameraScanButton onScan={handleCode} />
-          <PhoneScanButton onScan={handleCode} />
+          <PhoneLinkButton />
           <OfflineStatus online={offline.online} pending={offline.pending} syncing={offline.syncing} ready={offline.ready} onSync={offline.sync} />
           <Button variant="outline" onClick={() => setHeldOpen(true)} aria-label="Held bills (F9)" disabled={!offline.online}>
             <History /> <span className="hidden xl:inline">Held</span>

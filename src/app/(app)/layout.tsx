@@ -9,6 +9,7 @@ import { OrgProvider } from "@/components/app/org-context";
 import { RegisterServiceWorker } from "@/components/offline/register-sw";
 import { UpdateNotifier } from "@/components/app/update-notifier";
 import { DeviceBridge } from "@/components/print/device-bridge";
+import { PhoneLinkButton, PhoneLinkProvider } from "@/components/scanner/phone-link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       <RegisterServiceWorker />
       <UpdateNotifier />
       <DeviceBridge />
+      <PhoneLinkProvider>
       <SidebarProvider defaultOpen={cookieStore.get("sidebar_state")?.value !== "false"}>
         <AppSidebar orgs={ctx.orgs ?? []} userEmail={ctx.userEmail} />
         <SidebarInset className="min-w-0">
@@ -37,6 +39,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-5" />
             <CommandMenu />
             <div className="ml-auto flex items-center gap-2">
+              {can(ctx.role, "products:read") && <PhoneLinkButton compact />}
               {can(ctx.role, "pos:sell") && (
                 <Button asChild size="sm">
                   <Link href="/pos">
@@ -49,6 +52,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           <div className="flex-1">{children}</div>
         </SidebarInset>
       </SidebarProvider>
+      </PhoneLinkProvider>
     </OrgProvider>
   );
 }
