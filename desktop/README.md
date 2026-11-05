@@ -7,6 +7,11 @@ A native window around your Galla server. It adds what a browser can't do alone:
 - **Scanners**: USB and Bluetooth keyboard scanners work like in the browser; the camera works too.
 - Offline billing keeps working (same service worker as the web app).
 
+## One backend everywhere
+The desktop app is a native window around your **Galla server**: the same backend, database, accounts and data as the website (and the iPhone/iPad app). Nothing is copied into the installer, so **every web deploy shows up in the desktop app the next time it opens or reloads, with no reinstall**. You only ship a new installer when the native shell itself changes (printing, device pickers, window behaviour).
+
+Set the server once in GitHub (Settings → Variables → `GALLA_URL`) and the release build bakes it in; users never type it. Developers can run against their own server with `GALLA_URL=http://localhost:3000 npm start`.
+
 ## Run it
 
 ```bash

@@ -6,12 +6,11 @@ import { DESKTOP, RELEASES, releaseUrl } from "@/lib/downloads";
 import { Logo, PoweredBy } from "@/components/app/logo";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Download Galla", description: "Galla for Mac, Windows, iPhone, iPad and Android." };
+export const metadata: Metadata = { title: "Download Galla", description: "Galla for Mac, Windows, iPhone and iPad." };
 
 export default function DownloadPage() {
   const mobile = [
     { name: "iPhone & iPad", icon: Apple, url: env.IOS_APP_URL, store: "App Store" },
-    { name: "Android", icon: Smartphone, url: env.ANDROID_APP_URL, store: "Google Play" },
   ];
   return (
     <div className="landing-page min-h-dvh bg-background text-foreground">
@@ -40,7 +39,7 @@ export default function DownloadPage() {
         </section>
 
         <section aria-labelledby="mobile" className="mt-12">
-          <h2 id="mobile" className="flex items-center gap-2 text-lg font-bold"><Smartphone className="size-5 text-brand-deep" /> Phone & tablet</h2>
+          <h2 id="mobile" className="flex items-center gap-2 text-lg font-bold"><Smartphone className="size-5 text-brand-deep" /> iPhone & iPad</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {mobile.map((m) => {
               const body = (

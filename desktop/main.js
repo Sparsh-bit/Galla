@@ -5,7 +5,16 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, session, shell } = require("e
 const fs = require("node:fs");
 const path = require("node:path");
 
-const DEFAULT_URL = process.env.GALLA_URL || "";
+// The server every Galla app talks to (same backend and database as the website). Order: the user's own
+// choice, GALLA_URL, then the address baked into the installer (app-config.json, written by the release build).
+const bundledUrl = () => {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, "app-config.json"), "utf8")).url || "";
+  } catch {
+    return "";
+  }
+};
+const DEFAULT_URL = process.env.GALLA_URL || bundledUrl();
 const configFile = () => path.join(app.getPath("userData"), "config.json");
 
 function readUrl() {

@@ -21,7 +21,6 @@ const schema = z.object({
   // Where installers are hosted (a GitHub "latest release" download URL by default).
   DESKTOP_RELEASE_BASE: z.string().optional(),
   IOS_APP_URL: z.string().optional(),
-  ANDROID_APP_URL: z.string().optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {
   path: ["MAIL_FROM"],
   message: "set MAIL_FROM to a sender on a domain verified in Resend, e.g. Galla <no-reply@yourdomain.com>",

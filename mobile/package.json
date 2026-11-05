@@ -3,17 +3,14 @@
   "productName": "Galla",
   "version": "0.1.0",
   "private": true,
-  "description": "Galla for iPhone, iPad and Android (Capacitor shell around the Galla web app)",
+  "description": "Galla for iPhone and iPad (Capacitor shell around the Galla web app)",
   "scripts": {
     "add:ios": "cap add ios",
-    "add:android": "cap add android",
     "sync": "cap sync",
     "ios": "cap sync ios && cap open ios",
-    "android": "cap sync android && cap open android",
     "assets": "npx @capacitor/assets generate --iconBackgroundColor '#f5a524' --splashBackgroundColor '#fbf7ef'"
   },
   "dependencies": {
-    "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.0",
     "@capacitor/ios": "^7.0.0",

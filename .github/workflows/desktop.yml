@@ -28,6 +28,12 @@ jobs:
         with:
           node-version: 22
       - run: npm install --no-audit --no-fund
+      - name: Bake in the Galla server address
+        if: vars.GALLA_URL != ''
+        shell: bash
+        run: node -e "require('fs').writeFileSync('app-config.json', JSON.stringify({ url: process.env.GALLA_URL }))"
+        env:
+          GALLA_URL: ${{ vars.GALLA_URL }}
       - run: npm run ${{ matrix.script }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false" # unsigned builds; add signing secrets to sign
