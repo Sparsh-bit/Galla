@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bash scripts/dev.sh",
+    "dev": "node scripts/dev.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
@@ -11,12 +11,14 @@
     "test": "vitest run tests/unit",
     "test:int": "vitest run tests/integration",
     "e2e": "playwright test",
-    "db": "bash scripts/db.sh",
+    "db": "node scripts/db.mjs",
     "test:all": "vitest run && playwright test",
     "bridge": "node print-bridge/bridge.mjs",
     "clean:mac": "find . -name '._*' -not -path './node_modules/*' -delete",
     "dev:phone": "bash scripts/dev-phone.sh",
-    "serve:lan": "bash scripts/serve-lan.sh"
+    "serve:lan": "bash scripts/serve-lan.sh",
+    "api:docs": "tsx scripts/api-docs.ts",
+    "api:docs:check": "tsx scripts/api-docs.ts --check"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",

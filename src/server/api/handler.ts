@@ -1,6 +1,9 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { API_VERSION, CLIENT_HEADER, compareVersions } from "@/lib/api/routes";
+import { env } from "@/env";
+import { auth } from "../auth";
 import { isLockedOut, loadCtx } from "../context";
 import { LOCKED_MESSAGE } from "../services/subscription";
 import { connectDb } from "../db";
@@ -9,7 +12,7 @@ import { toSafeError, type ActionResult, type ErrorCode } from "../with-auth";
 import { match, ROUTES, type Req } from "./routes";
 
 const MAX_BODY = 6 * 1024 * 1024; // same limit as server actions
-const STATUS: Record<ErrorCode, number> = { UNAUTHENTICATED: 401, LOCKED: 402, FORBIDDEN: 403, NOT_FOUND: 404, INVALID: 422, CONFLICT: 409, INSUFFICIENT_STOCK: 409, CREDIT_LIMIT: 409, INTERNAL: 500 };
+const STATUS: Record<ErrorCode, number> = { UNAUTHENTICATED: 401, LOCKED: 402, FORBIDDEN: 403, NOT_FOUND: 404, INVALID: 422, CONFLICT: 409, INSUFFICIENT_STOCK: 409, CREDIT_LIMIT: 409, UPGRADE_REQUIRED: 426, NO_BUSINESS: 403, INTERNAL: 500 };
 const SESSION_COOKIES = ["__Secure-better-auth.session_token", "better-auth.session_token"];
 
 type Fail = Extract<ActionResult<unknown>, { ok: false }>;
@@ -72,12 +75,34 @@ function overLimit(req: Request) {
   return ++h.n > MAX_PER_WINDOW;
 }
 
+/** Oldest app version each platform may use (operators raise these to retire old builds). */
+const minVersions = () => ({ android: env.MIN_ANDROID_VERSION ?? null, ios: env.MIN_IOS_VERSION ?? null, desktop: env.MIN_DESKTOP_VERSION ?? null });
+
+/** "android/1.4.0" → too old? Browsers and unknown clients send nothing and are never blocked. */
+function outdated(req: Request) {
+  const m = /^(android|ios|desktop)\/(\d+\.\d+\.\d+)/i.exec(req.headers.get(CLIENT_HEADER) ?? "");
+  if (!m) return null;
+  const min = minVersions()[m[1].toLowerCase() as "android" | "ios" | "desktop"];
+  return min && compareVersions(m[2], min) < 0 ? min : null;
+}
+
 export async function handleApi(req: Request, segments: string[] = []) {
   const path = "/" + segments.join("/");
   if (req.method === "GET" && path === "/") {
-    return json({ ok: true, data: { name: "Galla API", version: 1, auth: "Cookie session or Authorization: Bearer <token> from POST /api/v1/auth/sign-in", routes: ROUTES.map((r) => ({ method: r.method, path: `/api/v1${r.path}`, summary: r.summary })) } });
+    return json({
+      ok: true,
+      data: {
+        name: "Galla API",
+        version: API_VERSION,
+        minClientVersions: minVersions(),
+        auth: "Cookie session or Authorization: Bearer <token> from POST /api/v1/auth/sign-in",
+        routes: ROUTES.map((r) => ({ name: r.name, method: r.method, path: `/api/v1${r.path}`, summary: r.summary, ...(r.query ? { query: r.query } : {}) })),
+      },
+    });
   }
   if (overLimit(req)) return fail(429, "INVALID", "Too many requests. Please slow down and try again in a minute.");
+  const tooOld = outdated(req);
+  if (tooOld) return json({ ok: false, code: "UPGRADE_REQUIRED", error: `This version of the app is no longer supported. Update Galla to ${tooOld} or newer.`, minVersion: tooOld }, 426);
   const m = match(req.method, path);
   if (!m) return fail(404, "NOT_FOUND", `No endpoint ${req.method} /api/v1${path}`);
   // Sign-in style routes carry no session yet, so there is nothing to forge; everything else needs a bearer token or our origin.
@@ -91,16 +116,22 @@ export async function handleApi(req: Request, segments: string[] = []) {
   try {
     if (m.route.kind === "query") {
       const ctx = await loadCtx();
-      if (!ctx) return (await isLockedOut()) ? fail(402, "LOCKED", LOCKED_MESSAGE) : fail(401, "UNAUTHENTICATED", "Your session has expired. Please sign in again.");
+      if (!ctx) {
+        if (await isLockedOut()) return fail(402, "LOCKED", LOCKED_MESSAGE);
+        // Signed in, but not a member of any business (accounts are created in the provider portal).
+        const session = await auth.api.getSession({ headers: await headers() });
+        return session ? fail(403, "NO_BUSINESS", "Your account isn't linked to a store yet. Contact Concilio Solutions.") : fail(401, "UNAUTHENTICATED", "Your session has expired. Please sign in again.");
+      }
       await connectDb();
       return json({ ok: true, data: await m.route.run(ctx, r) });
     }
-    const result = await m.route.run(r);
+    const result = await m.route.run(r, m.route);
     if (!result.ok) return json(result, statusOf(result));
-    // Sign-in style routes: hand native apps the session token they must send back as Bearer.
-    if (m.route.public && result.data && typeof result.data === "object") {
+    // Sign-in style routes: hand native apps the session token they must send back as Bearer
+    // (also when the action itself returns no data, e.g. finishing a two-step sign-in).
+    if (m.route.public) {
       const token = await sessionToken();
-      if (token) return json({ ok: true, data: { ...result.data, token } });
+      if (token) return json({ ok: true, data: { ...(result.data && typeof result.data === "object" ? result.data : {}), token } });
     }
     return json(result);
   } catch (err) {

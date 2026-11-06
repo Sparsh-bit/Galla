@@ -1,4 +1,5 @@
 import { toMinor } from "./money";
+import { UNITS } from "./units";
 
 export type ImportKind = "products" | "customers" | "suppliers";
 export type RawRow = Record<string, string>;
@@ -13,7 +14,7 @@ export const TEMPLATES: Record<ImportKind, string[]> = {
   suppliers: ["name", "phone", "email", "gstin", "state_code", "address", "city", "opening_balance"],
 };
 
-const KG_UNITS = new Set(["kg", "l", "m"]);
+const KG_UNITS = new Set(UNITS.filter((u) => u.scale === 1000).map((u) => u.code));
 
 /** "Sale Price" / "sale-price" / "SALE_PRICE" -> "sale_price"; common aliases mapped. */
 export function normalizeHeader(h: string): string {

@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { EXPORT_REPORTS } from "@/lib/exports";
 import { escapeCell, toCsv } from "@/lib/csv";
 import { formatQty } from "@/lib/format";
 import { can, type Permission } from "@/lib/permissions";
@@ -12,15 +13,7 @@ type Col = { key: string; label: string };
 const BOM = String.fromCharCode(0xfeff);
 const major = (m: number | null | undefined) => Number(((m ?? 0) / 100).toFixed(2));
 
-const REPORTS: Record<string, { permission: Permission; title: string }> = {
-  sales: { permission: "reports:read", title: "Sales" },
-  products: { permission: "products:read", title: "Products" },
-  stock: { permission: "reports:read", title: "Stock valuation" },
-  gst: { permission: "reports:read", title: "GST HSN summary" },
-  customers: { permission: "parties:read", title: "Customers" },
-  suppliers: { permission: "purchases:read", title: "Suppliers" },
-  movements: { permission: "stock:read", title: "Stock movements" },
-};
+const REPORTS = EXPORT_REPORTS as Record<string, { permission: Permission; title: string }>;
 
 export async function GET(req: Request, { params }: RouteContext<"/api/export/[report]">) {
   const { report } = await params;

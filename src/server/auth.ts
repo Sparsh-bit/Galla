@@ -12,6 +12,7 @@ import { env } from "@/env";
 import { sendMail } from "./mail";
 import { connectDb } from "./db";
 import { LoginAttempt, ProviderAdmin } from "./models";
+import { deleteAccountData } from "./services/account";
 import { lockReason } from "./services/subscription";
 
 const g = globalThis as unknown as { __authMongo?: MongoClient };
@@ -43,6 +44,19 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
       await sendMail(user.email, "Verify your email", `Hi ${user.name}, confirm your email address to start using Galla.`, { url, label: "Verify email" });
+    },
+  },
+  user: {
+    // In-app account deletion (Google Play requirement). Password-confirmed; see services/account.ts.
+    deleteUser: {
+      enabled: true,
+      beforeDelete: async (user) => {
+        try {
+          await deleteAccountData(user.id, user.email);
+        } catch (e) {
+          throw new APIError("BAD_REQUEST", { message: e instanceof Error ? e.message : "Could not delete the account." });
+        }
+      },
     },
   },
   session: {

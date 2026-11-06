@@ -11,6 +11,7 @@ import { auth } from "../auth";
 import { connectDb } from "../db";
 import { AppError } from "../context";
 import { RateLimit } from "../models";
+import { deletionPlan, type DeletionPlan } from "../services/account";
 import { toSafeError, withAuth, type ActionResult } from "../with-auth";
 import { LOCKED_MESSAGE } from "../services/subscription";
 
@@ -208,3 +209,43 @@ export const removeMemberAction = withAuth("members:manage", z.object({ memberId
 export const cancelInvitationAction = withAuth("members:manage", z.object({ invitationId: z.string().min(10).max(64) }).strict(), (_ctx, i) =>
   orgCall((h) => auth.api.cancelInvitation({ body: { invitationId: i.invitationId }, headers: h }), "Could not cancel the invitation."),
 );
+
+/* ---------- sign-out and account deletion (used by the apps; the web uses the auth client) ---------- */
+
+export async function signOutAction(): Promise<ActionResult<null>> {
+  const h = await headers();
+  await auth.api.signOut({ headers: h }).catch(() => undefined);
+  return { ok: true, data: null };
+}
+
+/** What deleting the account would remove, and anything that blocks it. Works without a business. */
+export async function accountDeletionPreview(): Promise<ActionResult<DeletionPlan>> {
+  return signedIn(async (h) => {
+    const s = await auth.api.getSession({ headers: h });
+    return deletionPlan(s!.user.id);
+  }, "Could not check the account");
+}
+
+export async function deleteAccountAction(input: { password: string; confirm: string }): Promise<ActionResult<null>> {
+  const p = z.object({ password, confirm: z.literal("DELETE", "Type DELETE to confirm") }).safeParse(input);
+  if (!p.success) return { ok: false, code: "INVALID", error: p.error.issues[0]?.message ?? "Invalid input" };
+  if (await limited("delete-account", 5, 3600)) return TOO_MANY;
+  const h = await headers();
+  if (!(await auth.api.getSession({ headers: h }))) return { ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." };
+  try {
+    await auth.api.deleteUser({ body: { password: p.data.password }, headers: h });
+    return { ok: true, data: null };
+  } catch (e) {
+    if (isAPIError(e) && /password/i.test(e.body?.code ?? e.body?.message ?? "")) return { ok: false, code: "INVALID", error: "Incorrect password." };
+    return { ok: false, code: "CONFLICT", error: message(e, "Could not delete the account.") };
+  }
+}
+
+export async function updateNameAction(input: { name: string }): Promise<ActionResult<null>> {
+  const p = z.object({ name: z.string().trim().min(1, "Enter your name").max(100) }).safeParse(input);
+  if (!p.success) return { ok: false, code: "INVALID", error: p.error.issues[0]?.message ?? "Invalid name" };
+  return signedIn(async (h) => {
+    await auth.api.updateUser({ body: { name: p.data.name }, headers: h });
+    return null;
+  }, "Could not update your name");
+}

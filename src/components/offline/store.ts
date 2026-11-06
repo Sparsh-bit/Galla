@@ -1,5 +1,6 @@
 "use client";
 // Offline storage for the POS: catalogue snapshot, queued bills and till identity (IndexedDB).
+import type { OfflineSalePayload } from "@/lib/offline-bill";
 import type { PosSnapshot } from "@/server/services/offline";
 
 const DB = "stockpilot-pos";
@@ -76,7 +77,7 @@ export interface QueuedSale {
   orgId: string;
   number: string;
   createdAt: string;
-  payload: Record<string, unknown>; // offlineSaleInput shape
+  payload: OfflineSalePayload;
   receipt: import("@/lib/receipt").ReceiptData;
   error?: string;
 }
