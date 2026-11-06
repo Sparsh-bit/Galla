@@ -18,6 +18,8 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
       - run: npm run typecheck
+      # The endpoint tables in docs/API.md must match src/lib/api/routes.ts (the route list the apps build on)
+      - run: npm run api:docs:check
       - run: npm test
       # In-memory MongoDB replica set (downloads mongod on first run)
       - run: npm run test:int
