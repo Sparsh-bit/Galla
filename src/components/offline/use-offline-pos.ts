@@ -1,9 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { fiscalYear, offlineNumber } from "@/lib/numbering";
+import { applyOfflineSale, buildOfflineBill, lookupInSnapshot, offlineSeries, searchSnapshot } from "@/lib/offline-bill";
 import type { ReceiptData } from "@/lib/receipt";
-import { computeBill } from "@/lib/tax";
 import { getPosSnapshot, registerTill, syncOfflineSales } from "@/server/actions/offline";
 import type { VariantHit } from "@/server/services/products";
 import type { PosSnapshot } from "@/server/services/offline";
@@ -132,27 +131,9 @@ export function useOfflinePos(orgId: string, locationId: string) {
     if (online && pending > 0 && till) void sync();
   }, [online, pending, till, sync]);
 
-  const lookupLocal = useCallback(
-    (code: string): VariantHit | null => {
-      if (!snapshot) return null;
-      const c = code.trim();
-      const hit = snapshot.variants.find((v) => v.barcode === c || v.sku === c);
-      if (hit) return hit;
-      const sn = snapshot.serials.find((s) => s.serial === c);
-      const v = sn && snapshot.variants.find((x) => x.variantId === sn.variantId);
-      return v ? { ...v, serial: sn.serial } : null;
-    },
-    [snapshot],
-  );
+  const lookupLocal = useCallback((code: string): VariantHit | null => (snapshot ? lookupInSnapshot(snapshot, code) : null), [snapshot]);
 
-  const searchLocal = useCallback(
-    (q: string) => {
-      if (!snapshot) return [];
-      const t = q.trim().toLowerCase();
-      return snapshot.variants.filter((v) => !t || v.name.toLowerCase().includes(t) || v.variantName.toLowerCase().includes(t) || v.sku.toLowerCase().includes(t) || v.barcode === q.trim()).slice(0, 40);
-    },
-    [snapshot],
-  );
+  const searchLocal = useCallback((q: string) => (snapshot ? searchSnapshot(snapshot.variants, q) : []), [snapshot]);
 
   const customersLocal = useCallback(
     (q: string): PosCustomer[] => {
@@ -163,7 +144,7 @@ export function useOfflinePos(orgId: string, locationId: string) {
     [snapshot],
   );
 
-  /** Saves a bill on this device with its final number from the till's own series. */
+  /** Saves a bill on this device with its final number from the till's own series (shared logic: lib/offline-bill). */
   const checkoutOffline = useCallback(
     async (o: OfflineCheckout): Promise<{ number: string; receipt: ReceiptData; total: number } | null> => {
       if (!till || !snapshot) {
@@ -174,67 +155,21 @@ export function useOfflinePos(orgId: string, locationId: string) {
         toast.error("Galla needs to check your subscription. Connect to the internet to keep billing.", { duration: 8000 });
         return null;
       }
-      const s = snapshot.settings;
       const now = new Date();
-      const fy = fiscalYear(now, s.fiscalYearStartMonth, s.timezone);
-      const prefix = o.kind === "tax_invoice" ? s.prefixes.invoice : s.prefixes.sale;
-      const seq = await nextOfflineSeq(orgId, `${prefix}:${fy}`);
-      const number = offlineNumber(prefix, till.code, fy, seq);
-      const interState = s.taxMode === "GST" && !!o.customer?.stateCode && !!s.stateCode && o.customer.stateCode !== s.stateCode;
-      const bill = computeBill({
-        lines: o.lines.map((l) => ({ unitPrice: l.unitPrice, qty: l.qty, scale: l.hit.scale, discount: l.discount, rateBp: l.hit.rateBp, cessBp: l.hit.cessBp, inclusive: l.hit.inclusive })),
-        billDiscount: o.billDiscount, mode: s.taxMode, interState, roundOff: s.roundOff,
-      });
-      const tendered = o.payments.reduce((a, p) => a + p.amount, 0);
-      const cash = o.payments.filter((p) => p.method === "cash").reduce((a, p) => a + p.amount, 0);
-      const credit = o.payments.filter((p) => p.method === "credit").reduce((a, p) => a + p.amount, 0);
-      const change = Math.min(cash, Math.max(0, tendered - bill.grandTotal));
-      const balanceDue = Math.max(0, bill.grandTotal - (tendered - credit - change));
+      const seq = await nextOfflineSeq(orgId, offlineSeries(snapshot.settings, o.kind, now).key);
       const clientId = o.clientId ?? crypto.randomUUID();
-
-      const summary = new Map<number, { rateBp: number; taxable: number; cgst: number; sgst: number; igst: number; vat: number; cess: number }>();
-      bill.lines.forEach((bl, i) => {
-        const r = summary.get(o.lines[i].hit.rateBp) ?? { rateBp: o.lines[i].hit.rateBp, taxable: 0, cgst: 0, sgst: 0, igst: 0, vat: 0, cess: 0 };
-        r.taxable += bl.taxable; r.cgst += bl.cgst; r.sgst += bl.sgst; r.igst += bl.igst; r.vat += bl.vat; r.cess += bl.cess;
-        summary.set(r.rateBp, r);
+      const { number, receipt, payload, total } = buildOfflineBill({
+        settings: snapshot.settings, tillCode: till.code, seq, now, clientId, locationId: o.locationId, cashierName: o.cashierName,
+        kind: o.kind, customer: o.customer, billDiscount: o.billDiscount, lines: o.lines, payments: o.payments,
       });
-      const receipt: ReceiptData = {
-        org: {
-          name: s.orgName, legalName: s.legalName, address: s.address, phone: s.phone, email: s.email, taxId: s.taxId, taxMode: s.taxMode, logoUrl: s.logoUrl,
-          header: s.receipt.header, footer: s.receipt.footer, terms: "", upiId: s.receipt.upiId, showUpiQr: s.receipt.showUpiQr, showHsn: s.receipt.showHsn,
-          currency: s.currency, locale: s.locale, timezone: s.timezone, paperWidth: s.receipt.paperWidth,
-        },
-        sale: {
-          id: clientId, number, kind: o.kind, status: "completed", cashier: o.cashierName, location: "",
-          date: now.toLocaleString(s.locale, { timeZone: s.timezone, day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
-          customer: o.customer ? { name: o.customer.name, phone: o.customer.phone, taxId: o.customer.taxId, address: "" } : null, placeOfSupply: o.customer?.stateCode || s.stateCode, interState,
-          lines: o.lines.map((l, i) => ({
-            name: [l.hit.name, l.hit.variantName].filter(Boolean).join(" - "), sku: l.hit.sku, hsn: l.hit.hsn, qty: l.qty, scale: l.hit.scale, unit: l.hit.unit, unitPrice: l.unitPrice,
-            mrp: l.hit.mrp, discount: bill.lines[i].discount, taxable: bill.lines[i].taxable, rateBp: l.hit.rateBp, tax: bill.lines[i].tax, total: bill.lines[i].total, batchNo: "", serials: l.serials,
-          })),
-          subtotal: bill.subtotal, discountTotal: bill.discountTotal, taxableTotal: bill.taxableTotal, cgst: bill.cgst, sgst: bill.sgst, igst: bill.igst, vat: bill.vat, cess: bill.cess,
-          taxTotal: bill.taxTotal, roundOff: bill.roundOff, grandTotal: bill.grandTotal, payments: o.payments.filter((p) => p.amount > 0), change,
-          balanceDue: o.customer ? balanceDue : 0, returnOfNumber: null, notes: "", taxSummary: [...summary.values()].filter((t) => t.cgst || t.sgst || t.igst || t.vat || t.cess),
-        },
-      };
-      const queued: QueuedSale = {
-        clientId, orgId, number, createdAt: now.toISOString(), receipt,
-        payload: {
-          clientId, number, createdAt: now.toISOString(), locationId: o.locationId, customerId: o.customer?.id ?? null, kind: o.kind, billDiscount: o.billDiscount, notes: "",
-          lines: o.lines.map((l) => ({ variantId: l.hit.variantId, qty: l.qty, unitPrice: l.unitPrice, discount: l.discount, serials: l.serials })),
-          payments: o.payments.filter((p) => p.amount > 0), grandTotal: bill.grandTotal,
-        },
-      };
+      const queued: QueuedSale = { clientId, orgId, number, createdAt: payload.createdAt, receipt, payload };
       await queueSale(queued);
       // Keep the local snapshot honest so the next offline bill sees reduced stock and sold serials.
-      const sold = new Set(o.lines.flatMap((l) => l.serials));
-      const qty = new Map<string, number>();
-      for (const l of o.lines) qty.set(l.hit.variantId, (qty.get(l.hit.variantId) ?? 0) + l.qty);
-      const next = { ...snapshot, variants: snapshot.variants.map((v) => (qty.has(v.variantId) ? { ...v, stock: v.stock - qty.get(v.variantId)! } : v)), serials: snapshot.serials.filter((x) => !sold.has(x.serial)) };
+      const next = applyOfflineSale(snapshot, o.lines);
       setSnap(next);
       await setSnapshot(orgId, next);
       await refreshPending();
-      return { number, receipt, total: bill.grandTotal };
+      return { number, receipt, total };
     },
     [orgId, till, snapshot, refreshPending],
   );

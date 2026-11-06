@@ -247,7 +247,6 @@ html.native-app, html.native-app body { overscroll-behavior: none; }
 html.native-app body { -webkit-user-select: none; user-select: none; cursor: default; }
 html.native-app :is(input, textarea, select, [contenteditable], [data-selectable], table td, table th) { -webkit-user-select: text; user-select: text; }
 html.native-app img { -webkit-user-drag: none; }
-html.native-app[data-platform="ios"] body, html.native-app[data-platform="android"] body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 
 /* Lite mode for low-end PCs: blur and long animations are the costliest paints, so drop them. */
 html.lite *, html.lite *::before, html.lite *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

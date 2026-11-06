@@ -11,6 +11,10 @@ import { audit } from "../services/system";
 import { withAuth } from "../with-auth";
 
 export const saveProduct = withAuth("products:write", z.object({ id: objectId.nullable(), data: productInput }).strict(), async (ctx, { id, data }) => {
+  // Images uploaded to another business can't be attached here.
+  if (data.images.some((url) => url.startsWith("/api/org-files/") && !url.startsWith(`/api/org-files/${ctx.orgId}/`))) {
+    throw new AppError("INVALID", "Upload the image again.", { images: ["Upload the image again."] });
+  }
   const legacyImages = data.images.filter((url) => /^\/api\/files\/[a-f0-9]{32}\.(?:webp|png|jpg)$/.test(url));
   if (legacyImages.length) {
     const existing = id ? await Product.findOne({ orgId: ctx.orgId, _id: id }, { images: 1 }).lean() : null;

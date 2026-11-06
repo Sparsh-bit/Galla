@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { DeleteAccount } from "./delete-account";
 
 interface Props {
   user: { name: string; email: string; twoFactorEnabled: boolean };
@@ -157,6 +158,8 @@ export function AccountSettings({ user, currentSessionId, sessions }: Props) {
           </ul>
         </CardContent>
       </Card>
+
+      <DeleteAccount />
 
       <Dialog open={!!twoFa} onOpenChange={(o) => { if (!o) { setTwoFa(null); router.refresh(); } }}>
         <DialogContent>

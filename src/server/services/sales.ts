@@ -16,7 +16,8 @@ import { audit, nextNumber } from "./system";
 type Input = z.output<typeof saleInput>;
 
 // ponytail: fixed cashier discount ceiling; make it a per-business setting if shops ask.
-export const CASHIER_MAX_DISCOUNT_PCT = 10;
+export { CASHIER_MAX_DISCOUNT_PCT } from "@/lib/permissions";
+import { CASHIER_MAX_DISCOUNT_PCT } from "@/lib/permissions";
 
 interface PricedLine {
   hit: VariantHit;

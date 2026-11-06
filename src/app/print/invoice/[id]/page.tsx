@@ -3,39 +3,12 @@ import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { formatMoney } from "@/lib/money";
 import { pct, qtyText, receiptTitle, upiLink } from "@/lib/receipt";
-import { INDIAN_STATES } from "@/lib/schemas";
+import { amountInWords as inWords, stateName } from "@/lib/invoice-html";
 import { requireCtx } from "@/server/context";
 import { getReceiptData } from "@/server/services/receipt";
 import { AutoPrint } from "../../auto-print";
 
 export const metadata: Metadata = { title: "Invoice" };
-const stateName = (code: string) => INDIAN_STATES.find(([c]) => c === code)?.[1] ?? code;
-
-/** Spells an amount in words (Indian numbering for INR, international otherwise). */
-function inWords(minor: number, currency: string): string {
-  const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-  const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-  const two = (n: number) => (n < 20 ? ones[n] : `${tens[Math.floor(n / 10)]}${n % 10 ? ` ${ones[n % 10]}` : ""}`);
-  const three = (n: number) => [n >= 100 ? `${ones[Math.floor(n / 100)]} Hundred` : "", two(n % 100)].filter(Boolean).join(" ");
-  const words = (n: number): string => {
-    if (n === 0) return "Zero";
-    const parts: string[] = [];
-    const units: [number, string][] = currency === "INR" ? [[1e7, "Crore"], [1e5, "Lakh"], [1e3, "Thousand"]] : [[1e9, "Billion"], [1e6, "Million"], [1e3, "Thousand"]];
-    for (const [v, name] of units) {
-      if (n >= v) {
-        parts.push(`${words(Math.floor(n / v))} ${name}`);
-        n %= v;
-      }
-    }
-    if (n) parts.push(three(n));
-    return parts.join(" ");
-  };
-  const major = Math.floor(Math.abs(minor) / 100);
-  const cents = Math.abs(minor) % 100;
-  const [big, small] = currency === "INR" ? ["Rupees", "Paise"] : [currency, "cents"];
-  return `${big} ${words(major)}${cents ? ` and ${two(cents)} ${small}` : ""} Only`;
-}
-
 export default async function InvoicePrintPage({ params, searchParams }: PageProps<"/print/invoice/[id]">) {
   const ctx = await requireCtx("sales:read");
   const { id } = await params;

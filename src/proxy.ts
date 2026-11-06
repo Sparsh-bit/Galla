@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden", "/download", "/robots.txt", "/locked", "/provider/sign-in"];
+const PUBLIC = ["/", "/manifest.webmanifest", "/apple-icon", "/sign-in", "/sign-up", "/forgot-password", "/reset-password", "/verify-email", "/two-factor", "/forbidden", "/download", "/robots.txt", "/locked", "/provider/sign-in", "/privacy", "/account-deletion"];
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 export function proxy(request: NextRequest) {
