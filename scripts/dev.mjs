@@ -50,6 +50,8 @@ const env = {
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET || readFileSync(secretFile, "utf8").trim(),
   APP_URL: process.env.APP_URL || `http://localhost:${port}`,
   MAIL_SINK: process.env.MAIL_SINK || "file",
+  // Locally anyone may sign up (production: only Concilio creates accounts, via the provider portal).
+  ALLOW_PUBLIC_SIGNUP: process.env.ALLOW_PUBLIC_SIGNUP || "true",
 };
 
 const lan = Object.values(networkInterfaces())
