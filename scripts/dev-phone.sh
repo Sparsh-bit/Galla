@@ -4,7 +4,7 @@
 # for localhost + this computer's LAN IP. Open the printed address on BOTH the laptop and phone.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-bash scripts/db.sh >/dev/null
+node scripts/db.mjs >/dev/null
 IP="${LAN_IP:-$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}')}"
 [ -n "$IP" ] || { echo "Could not detect your Wi-Fi IP. Run: LAN_IP=192.168.x.x npm run dev:phone"; exit 1; }
 mkdir -p .data/certs
