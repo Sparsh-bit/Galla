@@ -49,7 +49,8 @@ export const productInput = z
     trackSerial: z.boolean().default(false),
     warrantyMonths: z.number().int().min(0).max(600).default(0),
     reorderLevel: z.number().int().min(0).max(1e9).default(0),
-    images: z.array(z.string().regex(/^\/api\/files\/(?:[a-f0-9]{24}\/)?[a-f0-9]{32}\.(webp|png|jpg)$/)).max(6).default([]),
+    // Uploads return /api/org-files/<business>/<file>; older images are /api/files/<file>.
+    images: z.array(z.string().regex(/^\/api\/(?:org-files\/[a-f0-9]{24}|files(?:\/[a-f0-9]{24})?)\/[a-f0-9]{32}\.(webp|png|jpg)$/, "Upload the image again")).max(6).default([]),
     active: z.boolean().default(true),
     variants: z.array(variantInput).min(1).max(100),
     openingLocationId: objectId.optional(),

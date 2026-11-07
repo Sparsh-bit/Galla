@@ -8,7 +8,7 @@ Galla is a multi-tenant inventory, billing and POS application for small busines
 
 ```mermaid
 flowchart LR
-  Browser[Desktop / tablet / phone browser]
+  Browser[Browser / desktop app / Android app]
   Proxy[Next.js proxy\nredirect gate + CSP + security headers]
   Pages[App Router pages\nServer Components by default]
   Actions[Server Actions / Route Handlers]
@@ -34,6 +34,16 @@ flowchart LR
 ```
 
 `src/app` owns routes and page composition. `src/components` owns interactive UI leaves. `src/server/actions` adapts client calls to server-side operations. `src/server/services` owns business rules and transaction boundaries. `src/server/models` defines persisted records and tenant query guardrails. `src/lib` contains pure calculations and schemas.
+
+## Clients and the API contract
+
+Three clients use one backend: the browser (React Server Components and server actions), the Windows/macOS desktop app (Electron loading the web app) and the native Android app (Expo/React Native, kept outside this repository) which uses the REST API v1 only.
+
+- **One route list.** `src/lib/api/routes.ts` names every endpoint (method, path, query keys). `src/server/api/routes.ts` must attach exactly one handler to each name (a compile error otherwise); handlers call the same `withAuth` actions and permission-checked queries as the web, so business rules exist once.
+- **Typed from the source.** `ApiTypes` derives each route's input and JSON output from those actions and queries. The Android app imports it as a type only, so a server change that would break the app fails the app's type check in CI on the same commit.
+- **Shared pure logic.** The app bundles `src/lib` directly (tax, money, numbering, offline bills, receipts/ESC-POS, A4 invoice, cart and tender rules, permissions, schemas), so offline bills and previews are computed exactly as the server computes them. Metro and ESLint refuse runtime imports of server code.
+- **Versioned clients.** Apps identify themselves with `X-Galla-Client`; `MIN_ANDROID_VERSION` (etc.) turns away outdated builds with HTTP 426 so they show an update screen. API changes are additive; breaking changes ship the app first.
+- **Native auth.** Apps sign in through `/api/v1/auth/*` and send the session token as `Authorization: Bearer`; bearer requests are exempt from the same-origin CSRF check that cookie requests need. The token is kept in the OS keystore (SecureStore).
 
 ## Request and authorization flow
 

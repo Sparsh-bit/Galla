@@ -4,7 +4,8 @@ import { can, seesCost } from "@/lib/permissions";
 import { auth } from "../auth";
 import { AppError, getOrgSettings, type Ctx } from "../context";
 import { connectDb } from "../db";
-import { AuditLog, Category, Location, Party, Product, PurchaseOrder, Sale, SerialNumber, StockLevel, StockMove, TaxRate, Types, type ProductDoc } from "../models";
+import { AuditLog, Category, EinvoiceConfig, Location, Party, Product, PurchaseOrder, Sale, SerialNumber, StockLevel, StockMove, TaxRate, Types, type ProductDoc, type SaleDoc } from "../models";
+import { getReceiptData } from "../services/receipt";
 import { getEinvoiceSettings } from "../services/einvoice";
 import { partyStatement } from "../services/ledger";
 import {
@@ -33,7 +34,7 @@ function stripCost(ctx: Ctx, p: ProductDoc) {
 /* ---------------- session ---------------- */
 
 export async function me(ctx: Ctx) {
-  const s = await getOrgSettings(ctx.orgId);
+  const [s, session] = await Promise.all([getOrgSettings(ctx.orgId), auth.api.getSession({ headers: await headers() })]);
   const { connection } = await connectDb();
   const orgs = await connection.db!
     .collection("member")
@@ -45,8 +46,15 @@ export async function me(ctx: Ctx) {
     ])
     .toArray();
   return {
-    user: { id: ctx.userId, name: ctx.userName, email: ctx.userEmail },
-    business: { id: ctx.orgId, name: ctx.orgName, role: ctx.role, currency: s.currency, locale: s.locale, timezone: s.timezone, taxMode: s.taxMode },
+    user: { id: ctx.userId, name: ctx.userName, email: ctx.userEmail, twoFactorEnabled: !!(session?.user as { twoFactorEnabled?: boolean } | undefined)?.twoFactorEnabled },
+    business: {
+      id: ctx.orgId, name: ctx.orgName, role: ctx.role, currency: s.currency, locale: s.locale, timezone: s.timezone, taxMode: s.taxMode as "GST" | "VAT" | "NONE",
+      // What a till needs to bill exactly like the web POS.
+      stateCode: s.stateCode ?? "", roundOff: !!s.roundOff, pricesIncludeTax: !!s.pricesIncludeTax, allowNegativeStock: !!s.allowNegativeStock,
+      fiscalYearStartMonth: s.fiscalYearStartMonth, logoUrl: s.logoUrl ?? null,
+      receipt: { paperWidth: (s.receipt?.paperWidth ?? 80) as 58 | 80, upiId: s.receipt?.upiId ?? "", showUpiQr: !!s.receipt?.showUpiQr },
+      scanner: { interKeyMs: s.scanner?.interKeyMs ?? 35, minLength: s.scanner?.minLength ?? 4 },
+    },
     businesses: orgs,
   };
 }
@@ -188,7 +196,14 @@ export async function listMoves(ctx: Ctx, q: Query) {
     delete filter.createdAt;
   }
   const [rows, total] = await Promise.all([StockMove.find(filter).sort({ createdAt: -1 }).skip((p - 1) * PAGE).limit(PAGE).lean(), StockMove.countDocuments(filter)]);
-  const items = seesCost(ctx.role) ? rows : rows.map((m) => ({ ...m, unitCost: 0 }));
+  // Name and unit of each product, so a movement can be shown on its own (kg items in kg, not grams).
+  const products = await Product.find({ orgId: ctx.orgId, _id: { $in: [...new Set(rows.map((m) => String(m.productId)))] } }, { name: 1, unit: 1, variants: { _id: 1, name: 1 } }).lean();
+  const info = (m: (typeof rows)[number]) => {
+    const pr = products.find((x) => String(x._id) === String(m.productId));
+    const v = pr?.variants.find((x) => String(x._id) === String(m.variantId));
+    return { name: [pr?.name, v?.name].filter(Boolean).join(" - ") || "Deleted item", unit: pr?.unit?.code ?? "", scale: pr?.unit?.scale ?? 1 };
+  };
+  const items = rows.map((m) => ({ ...m, unitCost: seesCost(ctx.role) ? m.unitCost : 0, product: info(m) }));
   return { ...paged(items, total, p), range: { from: r.from, to: r.to } };
 }
 
@@ -223,6 +238,38 @@ export async function listSales(ctx: Ctx, q: Query) {
     Sale.countDocuments(filter),
   ]);
   return { ...paged(rows, total, p), range: { from: r.from, to: r.to } };
+}
+
+/** Everything the bill screen shows (same rules as the web's /sales/[id] page). */
+export async function saleDetail(ctx: Ctx, saleId: string) {
+  need(ctx, "sales:read");
+  const sale = isId(saleId) ? await Sale.findOne({ orgId: ctx.orgId, _id: saleId, status: { $in: ["completed", "void"] } }).lean<SaleDoc>() : null;
+  if (!sale) throw new AppError("NOT_FOUND", "Not found");
+  const s = await getOrgSettings(ctx.orgId);
+  const isReturn = sale.kind === "return";
+  const einvoiceEligible = s.taxMode === "GST" && sale.status === "completed" && !!sale.customer?.taxId;
+  const [receipt, loc, returns, original, einv] = await Promise.all([
+    getReceiptData(ctx, saleId),
+    Location.findOne({ orgId: ctx.orgId, _id: sale.locationId }, { name: 1 }).lean(),
+    Sale.find({ orgId: ctx.orgId, returnOf: sale._id }, { number: 1, grandTotal: 1, completedAt: 1 }).lean(),
+    sale.returnOf ? Sale.findOne({ orgId: ctx.orgId, _id: sale.returnOf }, { number: 1 }).lean() : null,
+    einvoiceEligible ? EinvoiceConfig.findOne({ orgId: ctx.orgId }, { enabled: 1 }).lean() : null,
+  ]);
+  const returnable = !isReturn && sale.status === "completed" && sale.lines.some((l) => l.qty - (l.returnedQty ?? 0) > 0);
+  return {
+    receipt,
+    customerId: sale.customerId ? String(sale.customerId) : null,
+    location: loc?.name ?? "",
+    completedAt: sale.completedAt ?? null,
+    deviceCode: sale.deviceCode ?? null,
+    lines: sale.lines.map((l, i) => ({ index: i, sold: l.qty, returned: l.returnedQty ?? 0, serials: l.serials ?? [] })),
+    syncIssues: (sale.syncIssues ?? []).map((i) => ({ code: i.code ?? "", message: i.message ?? "" })),
+    returns: returns.map((r) => ({ id: String(r._id), number: r.number ?? "", total: r.grandTotal ?? 0, at: r.completedAt ?? null })),
+    returnOf: original ? { id: String(original._id), number: original.number ?? "" } : null,
+    canReturn: returnable && can(ctx.role, "sales:return"),
+    canVoid: !isReturn && sale.status === "completed" && can(ctx.role, "sales:void"),
+    einvoice: { eligible: einvoiceEligible, enabled: !!einv?.enabled, canManage: can(ctx.role, "sales:void") },
+  };
 }
 
 /* ---------------- customers, suppliers, khata ---------------- */

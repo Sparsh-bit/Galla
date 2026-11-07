@@ -1,3 +1,4 @@
+import { KHATA_LABELS as KIND_LABELS, reminderText } from "@/lib/khata";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download, Factory, Users } from "lucide-react";
@@ -128,7 +129,7 @@ export async function PartyDetailPage({ kind, id }: { kind: "customer" | "suppli
   const cc = countryCodeFor(s.currency);
   const reminder =
     kind === "customer" && p.phone && p.balance > 0
-      ? waLink(p.phone, `Namaste ${p.name}, this is a reminder from ${ctx.orgName}. Your pending balance is ${money(p.balance)}. Please pay at your earliest convenience. Thank you!`, cc)
+      ? waLink(p.phone, reminderText(p.name, ctx.orgName, money(p.balance)), cc)
       : null;
   const labels = KIND_LABELS[kind];
   const canUndo = canWrite && can(ctx.role, "ledger:reverse");
@@ -317,7 +318,4 @@ export async function PartyDetailPage({ kind, id }: { kind: "customer" | "suppli
   );
 }
 
-const KIND_LABELS: Record<"customer" | "supplier", Record<string, string>> = {
-  customer: { plus: "Udhaar / bills", minus: "Received", opening: "Opening balance", sale: "Bill on account", sale_void: "Bill voided", return: "Return credited", payment: "Payment received", udhaar: "Udhaar given", adjustment: "Adjustment", reversal: "Correction (undo)" },
-  supplier: { plus: "Purchases", minus: "Paid", opening: "Opening balance", purchase: "Goods received", purchase_return: "Returned to supplier", payment: "Payment made", udhaar: "Udhaar taken", adjustment: "Adjustment", reversal: "Correction (undo)" },
-};
+

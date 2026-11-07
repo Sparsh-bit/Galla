@@ -7,7 +7,7 @@ import { AppError, isLockedOut, loadCtx, type Ctx } from "./context";
 import { LOCKED_MESSAGE } from "./services/subscription";
 import { connectDb } from "./db";
 
-export type ErrorCode = "UNAUTHENTICATED" | "LOCKED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "INSUFFICIENT_STOCK" | "CREDIT_LIMIT" | "INTERNAL";
+export type ErrorCode = "UNAUTHENTICATED" | "LOCKED" | "FORBIDDEN" | "NOT_FOUND" | "INVALID" | "CONFLICT" | "INSUFFICIENT_STOCK" | "CREDIT_LIMIT" | "UPGRADE_REQUIRED" | "NO_BUSINESS" | "INTERNAL";
 /** `code` is machine-readable (the REST API maps it to an HTTP status); the web UI shows `error`. */
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string; code?: ErrorCode; fieldErrors?: Record<string, string[]> };
 

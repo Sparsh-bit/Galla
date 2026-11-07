@@ -19,7 +19,10 @@ test("REST API: bearer auth, POS sale, khata, phone scanner and role rules", asy
   const api = await playwright.request.newContext({ baseURL });
 
   expect((await api.get("/api/v1/me")).status()).toBe(401);
-  expect((await (await api.get("/api/v1")).json()).data.routes.length).toBeGreaterThan(80);
+  const index = (await (await api.get("/api/v1")).json()).data;
+  expect(index.routes.length).toBeGreaterThan(80);
+  expect(index.routes.find((r: { name: string }) => r.name === "sales.detail")?.path).toBe("/api/v1/sales/:saleId/detail");
+  expect(index).toHaveProperty("minClientVersions");
 
   const wrong = await api.post("/api/v1/auth/sign-in", { data: { email: OWNER.email, password: "wrong-password-123" } });
   expect(wrong.status()).toBe(400);
@@ -39,6 +42,11 @@ test("REST API: bearer auth, POS sale, khata, phone scanner and role rules", asy
   expect(saleId).toBeTruthy();
   const bill = (await (await api.get(`/api/v1/sales/${saleId}`, { headers: owner })).json()).data;
   expect(bill.sale.lines[0].name).toContain("Mineral Water");
+  // The app's bill screen: receipt plus what this role may do.
+  const saleDetail = (await (await api.get(`/api/v1/sales/${saleId}/detail`, { headers: owner })).json()).data;
+  expect(saleDetail.receipt.sale.number).toBe(bill.sale.number);
+  expect(saleDetail.canVoid).toBe(true);
+  expect(saleDetail.lines[0]).toMatchObject({ index: 0, returned: 0 });
   expect((await (await api.get("/api/v1/sales", { headers: owner })).json()).data.items.some((s: { _id: string }) => s._id === saleId)).toBe(true);
 
   // Validation errors come back as 422 with field errors.
