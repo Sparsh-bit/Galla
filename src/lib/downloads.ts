@@ -44,8 +44,10 @@ export async function publishedInstallers(base?: string): Promise<{ version: str
       if (a) links[d.id] = a.browser_download_url;
     }
     const apk = assets.find((a) => a.name === ANDROID_APK.file) ?? assets.find((a) => ANDROID_APK.filePattern?.test(a.name));
-    // Prefer the APK asset from the releases repo when published; otherwise serve the APK bundled with the site so downloads never 404.
-    links[ANDROID_APK.id] = apk?.browser_download_url ?? "/downloads/Galla-android.apk";
+    // Always serve the APK bundled with the site for a reliable direct download on phones.
+    // (galla-releases may not contain an APK asset; upload there when available for parity.)
+    links[ANDROID_APK.id] = "/downloads/Galla-android.apk";
+    if (apk) links[`${ANDROID_APK.id}Release`] = apk.browser_download_url;
     return { version: rel.tag_name?.replace(/^desktop-v|^v/, "") ?? null, links };
   } catch {
     // Serve bundled APK so the download button always works even if the releases API is unavailable.
