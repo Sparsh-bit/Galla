@@ -7,7 +7,7 @@ import "server-only";
 const RELEASES_REPO = "Sparsh-bit/galla-releases";
 const LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`;
 
-export interface DownloadItem { id: "mac-arm" | "mac-intel" | "windows"; label: string; sub: string; file: string }
+export interface DownloadItem { id: "mac-arm" | "mac-intel" | "windows" | "android"; label: string; sub: string; file?: string; filePattern?: RegExp }
 
 export const DESKTOP: DownloadItem[] = [
   { id: "mac-arm", label: "macOS", sub: "Apple silicon (M1 and newer)", file: "Galla-mac-arm64.dmg" },
@@ -15,18 +15,37 @@ export const DESKTOP: DownloadItem[] = [
   { id: "windows", label: "Windows", sub: "Windows 10 and 11, 64-bit", file: "Galla-win-x64.exe" },
 ];
 
+export const ANDROID_APK: DownloadItem = {
+  id: "android",
+  label: "Android",
+  sub: "Android phones and tablets (APK)",
+  file: "Galla-android.apk",
+  filePattern: /^galla.*\.apk$/i,
+};
+
 /**
  * Direct download links for the installers that are actually published, so a button never sends
- * people to an empty GitHub page. With DESKTOP_RELEASE_BASE set (own file host) every file is assumed present.
- * Cached for 10 minutes to stay far below GitHub's anonymous API limit.
+ * people to an empty GitHub page. With DESKTOP_RELEASE_BASE set (own file host) fixed-name files
+ * are assumed present. Cached for 10 minutes to stay far below GitHub's anonymous API limit.
  */
 export async function publishedInstallers(base?: string): Promise<{ version: string | null; links: Record<string, string> }> {
-  if (base) return { version: null, links: Object.fromEntries(DESKTOP.map((d) => [d.file, `${base.replace(/\/$/, "")}/${d.file}`])) };
+  if (base) {
+    const root = base.replace(/\/$/, "");
+    return { version: null, links: Object.fromEntries(DESKTOP.map((d) => [d.file!, `${root}/${d.file}`])) };
+  }
   try {
     const res = await fetch(LATEST_API, { headers: { Accept: "application/vnd.github+json" }, next: { revalidate: 600 }, signal: AbortSignal.timeout(4000) });
     if (!res.ok) return { version: null, links: {} };
     const rel = (await res.json()) as { tag_name?: string; assets?: { name: string; browser_download_url: string }[] };
-    return { version: rel.tag_name?.replace(/^desktop-v|^v/, "") ?? null, links: Object.fromEntries((rel.assets ?? []).map((a) => [a.name, a.browser_download_url])) };
+    const assets = rel.assets ?? [];
+    const links: Record<string, string> = {};
+    for (const d of DESKTOP) {
+      const a = assets.find((x) => x.name === d.file);
+      if (a) links[d.id] = a.browser_download_url;
+    }
+    const apk = assets.find((a) => a.name === ANDROID_APK.file) ?? assets.find((a) => ANDROID_APK.filePattern?.test(a.name));
+    if (apk) links[ANDROID_APK.id] = apk.browser_download_url;
+    return { version: rel.tag_name?.replace(/^desktop-v|^v/, "") ?? null, links };
   } catch {
     return { version: null, links: {} };
   }
