@@ -44,15 +44,15 @@ export async function publishedInstallers(base?: string): Promise<{ version: str
       if (a) links[d.id] = a.browser_download_url;
     }
     const apk = assets.find((a) => a.name === ANDROID_APK.file) ?? assets.find((a) => ANDROID_APK.filePattern?.test(a.name));
-    if (apk) {
-      links[ANDROID_APK.id] = apk.browser_download_url;
-    } else if (rel.html_url) {
-      // No APK asset published yet: link to the latest release page so the button stays available.
-      links[`${ANDROID_APK.id}Page`] = rel.html_url;
-    }
+    // Direct-download URL: browser starts download when the APK asset exists in the latest release.
+    // Uses the canonical asset name so publishing `Galla-android.apk` (or matching name) makes it work automatically.
+    const apkDownload = apk?.browser_download_url ?? `https://github.com/${RELEASES_REPO}/releases/latest/download/${ANDROID_APK.file}`;
+    links[ANDROID_APK.id] = apkDownload;
+    if (!apk && rel.html_url) links[`${ANDROID_APK.id}Page`] = rel.html_url;
     return { version: rel.tag_name?.replace(/^desktop-v|^v/, "") ?? null, links };
   } catch {
-    return { version: null, links: {} };
+    // Fallback to canonical latest-download URL so the button can still trigger a direct APK download once published.
+    return { version: null, links: { [ANDROID_APK.id]: `https://github.com/${RELEASES_REPO}/releases/latest/download/${ANDROID_APK.file}` } };
   }
 }
 

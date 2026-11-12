@@ -53,15 +53,12 @@ export async function AppDownloads() {
             const storeUrl = m.url();
             const isAndroid = m.name === ANDROID_APK.label;
             const apkUrl = isAndroid ? links[ANDROID_APK.id] : undefined;
-            const releaseUrl = isAndroid ? links[`${ANDROID_APK.id}Page`] : undefined;
-            const href = storeUrl || apkUrl || releaseUrl;
+            const href = storeUrl || apkUrl;
             const sub = storeUrl
               ? `Get it on ${m.store}`
               : apkUrl
                 ? `Download APK${version ? ` · v${version}` : ""} (direct install)`
-                : releaseUrl
-                  ? `Download APK${version ? ` · v${version}` : ""} from latest release`
-                  : `On the ${m.store} soon`;
+                : `On the ${m.store} soon`;
             const body = (
               <span className="flex w-full items-center gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-[#047348]"><m.icon className="size-5" /></span>
@@ -71,14 +68,14 @@ export async function AppDownloads() {
               </span>
             );
             return href ? (
-              <a key={m.name} href={href} {...(apkUrl ? { download: true } : {})} target={storeUrl || releaseUrl ? "_blank" : undefined} rel={storeUrl || releaseUrl ? "noopener noreferrer" : undefined} className="hover-lift flex rounded-2xl border border-border bg-card p-5">{body}</a>
+              <a key={m.name} href={href} {...(apkUrl && !storeUrl ? { download: true } : {})} className="hover-lift flex rounded-2xl border border-border bg-card p-5">{body}</a>
             ) : (
               <div key={m.name} aria-disabled="true" className="flex rounded-2xl border border-dashed border-border bg-card/60 p-5">{body}</div>
             );
           })}
         </div>
-        {(links[ANDROID_APK.id] || links[`${ANDROID_APK.id}Page`]) && (
-          <p className="mt-3 text-xs text-muted-foreground">Android: download and open the APK, then allow install from this source if asked. Installed apps can check for updates automatically once an APK release is available.</p>
+        {links[ANDROID_APK.id] && !env.ANDROID_APP_URL && (
+          <p className="mt-3 text-xs text-muted-foreground">Android: tap Download to get the APK, then open it and allow install from this source if asked. Installed apps can check for updates automatically.</p>
         )}
 
       </section>
