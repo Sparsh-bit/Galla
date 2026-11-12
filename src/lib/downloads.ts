@@ -36,7 +36,7 @@ export async function publishedInstallers(base?: string): Promise<{ version: str
   try {
     const res = await fetch(LATEST_API, { headers: { Accept: "application/vnd.github+json" }, next: { revalidate: 600 }, signal: AbortSignal.timeout(4000) });
     if (!res.ok) return { version: null, links: {} };
-    const rel = (await res.json()) as { tag_name?: string; assets?: { name: string; browser_download_url: string }[] };
+    const rel = (await res.json()) as { tag_name?: string; html_url?: string; assets?: { name: string; browser_download_url: string }[] };
     const assets = rel.assets ?? [];
     const links: Record<string, string> = {};
     for (const d of DESKTOP) {
@@ -44,7 +44,12 @@ export async function publishedInstallers(base?: string): Promise<{ version: str
       if (a) links[d.id] = a.browser_download_url;
     }
     const apk = assets.find((a) => a.name === ANDROID_APK.file) ?? assets.find((a) => ANDROID_APK.filePattern?.test(a.name));
-    if (apk) links[ANDROID_APK.id] = apk.browser_download_url;
+    if (apk) {
+      links[ANDROID_APK.id] = apk.browser_download_url;
+    } else if (rel.html_url) {
+      // No APK asset published yet: link to the latest release page so the button stays available.
+      links[`${ANDROID_APK.id}Page`] = rel.html_url;
+    }
     return { version: rel.tag_name?.replace(/^desktop-v|^v/, "") ?? null, links };
   } catch {
     return { version: null, links: {} };
