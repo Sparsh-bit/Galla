@@ -33,4 +33,4 @@ export async function publishedInstallers(base?: string): Promise<{ version: str
 }
 
 /** Placeholder until the Concilio Solutions booking page is ready; override with REQUEST_ACCESS_URL. */
-export const DEFAULT_REQUEST_ACCESS_URL = "https://concilio.solutions";
+export const DEFAULT_REQUEST_ACCESS_URL = "https://concilio.solutions/book?service=galla";
