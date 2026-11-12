@@ -7,7 +7,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Optimistic gate only (real checks happen server-side on every page and action).
-  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon") || pathname.startsWith("/.well-known/");
+  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon") || pathname.startsWith("/brand/") || pathname.startsWith("/.well-known/");
   const hasSession = SESSION_COOKIES.some((c) => request.cookies.has(c));
   if (!isPublic && !hasSession && pathname.startsWith("/provider")) return NextResponse.redirect(new URL("/provider/sign-in", request.url));
   if (!isPublic && !hasSession && !pathname.startsWith("/api/")) {
