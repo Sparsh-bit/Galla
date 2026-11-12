@@ -12,6 +12,7 @@ const eslintConfig = defineConfig([
     ".next-e2e/**",
     ".next-lan/**",
     ".claude/**",
+    ".kilo/**",
     ".galla_tmp/**",
     "galla-marketing/**",
     "out/**",
