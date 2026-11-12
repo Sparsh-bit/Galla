@@ -190,7 +190,7 @@ export default async function HomePage() {
           <div className="reveal mb-10 max-w-2xl">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-brand-deep">Get the apps</p>
             <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl">Galla on <span className="serif-accent">every counter.</span></h2>
-            <p className="mt-4 text-sm leading-6 text-muted-foreground sm:text-base">Install Galla on your shop’s Mac or Windows PC. Silent printing to any printer, scanners that just work, and billing that keeps going offline. iPhone, iPad and Android apps are on the way.</p>
+            <p className="mt-4 text-sm leading-6 text-muted-foreground sm:text-base">Install Galla on your shop’s Mac, Windows PC, or Android phone (APK). Silent printing to any printer, scanners that just work, and billing that keeps going offline. iPhone and iPad apps are on the way.</p>
           </div>
           <div className="reveal"><AppDownloads /></div>
         </section>
