@@ -1,14 +1,14 @@
 import { Download, Monitor, Smartphone } from "lucide-react";
 import { AndroidLogo, AppleLogo, WindowsLogo } from "./brand-icons";
 import { env } from "@/env";
-import { DESKTOP, publishedInstallers } from "@/lib/downloads";
+import { ANDROID_APK, DESKTOP, publishedInstallers } from "@/lib/downloads";
 
 const MOBILE = [
   { name: "iPhone & iPad", icon: AppleLogo, store: "App Store", url: () => env.IOS_APP_URL },
-  { name: "Android", icon: AndroidLogo, store: "Google Play", url: () => env.ANDROID_APP_URL },
-];
+  { name: ANDROID_APK.label, icon: AndroidLogo, store: "Google Play", url: () => env.ANDROID_APP_URL },
+] as const;
 
-/** Mac and Windows installers, plus the phone apps (coming soon until their store links are set). */
+/** Mac/Windows installers and mobile app downloads (direct APK or store link when available). */
 export async function AppDownloads() {
   const { version, links } = await publishedInstallers(env.DESKTOP_RELEASE_BASE);
   return (
@@ -17,7 +17,7 @@ export async function AppDownloads() {
         <h3 id="dl-desktop" className="flex items-center gap-2 text-lg font-bold text-[#032048]"><Monitor className="size-5 text-[#047348]" /> Desktop</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {DESKTOP.map((d) => {
-            const href = links[d.file];
+            const href = links[d.id];
             const text = (
               <span className="flex items-start gap-3">
                 {d.id === "windows" ? <WindowsLogo className="mt-0.5 size-6 shrink-0 text-[#0078d4]" /> : <AppleLogo className="mt-0.5 size-6 shrink-0 text-foreground" />}
@@ -50,21 +50,28 @@ export async function AppDownloads() {
         <h3 id="dl-mobile" className="flex items-center gap-2 text-lg font-bold text-[#032048]"><Smartphone className="size-5 text-[#047348]" /> Phone & tablet</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {MOBILE.map((m) => {
-            const url = m.url();
+            const storeUrl = m.url();
+            const apkUrl = m.name === ANDROID_APK.label ? links[ANDROID_APK.id] : undefined;
+            const href = storeUrl || apkUrl;
+            const sub = storeUrl ? `Get it on ${m.store}` : apkUrl ? `Download APK${version ? ` · v${version}` : ""} (direct install)` : m.name === ANDROID_APK.label ? "APK available soon" : `On the ${m.store} soon`;
             const body = (
               <span className="flex w-full items-center gap-3">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-[#047348]"><m.icon className="size-5" /></span>
-                <span className="min-w-0 flex-1"><span className="block text-base font-bold text-[#032048]">{m.name}</span><span className="text-xs text-muted-foreground">{url ? `Get it on ${m.store}` : `On the ${m.store} soon`}</span></span>
-                {!url && <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#047348]">Coming soon</span>}
+                <span className="min-w-0 flex-1"><span className="block text-base font-bold text-[#032048]">{m.name}</span><span className="text-xs text-muted-foreground">{sub}</span></span>
+                {apkUrl && !storeUrl && <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground"><Download className="size-4" /></span>}
+                {!href && <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#047348]">Coming soon</span>}
               </span>
             );
-            return url ? (
-              <a key={m.name} href={url} className="hover-lift flex rounded-2xl border border-border bg-card p-5">{body}</a>
+            return href ? (
+              <a key={m.name} href={href} {...(apkUrl && !storeUrl ? { download: true } : {})} className="hover-lift flex rounded-2xl border border-border bg-card p-5">{body}</a>
             ) : (
               <div key={m.name} aria-disabled="true" className="flex rounded-2xl border border-dashed border-border bg-card/60 p-5">{body}</div>
             );
           })}
         </div>
+        {links[ANDROID_APK.id] && (
+          <p className="mt-3 text-xs text-muted-foreground">Android APK: download and open the file, then allow install from this source if asked. The app checks for updates automatically.</p>
+        )}
       </section>
     </div>
   );
