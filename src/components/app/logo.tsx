@@ -43,15 +43,6 @@ export function LogoMark({ className }: { className?: string }) {
         <rect x="57" y="73" width="13" height="2.8" rx="1.4" fill="#ffffff" />
       </g>
 
-      {/* High-resolution raster overlay for 1:1 authentic reproduction */}
-      <image
-        href="/brand/logo-mark.png"
-        x="0"
-        y="0"
-        width="100"
-        height="114"
-        preserveAspectRatio="xMidYMid meet"
-      />
     </svg>
   );
 }

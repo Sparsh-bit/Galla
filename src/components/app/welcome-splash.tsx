@@ -67,14 +67,7 @@ export function WelcomeSplash() {
             <rect x="57" y="66" width="18" height="2.8" rx="1.4" fill="#ffffff" />
             <rect x="57" y="73" width="13" height="2.8" rx="1.4" fill="#ffffff" />
           </g>
-          <image
-            href="/brand/logo-mark.png"
-            x="0"
-            y="0"
-            width="100"
-            height="114"
-            preserveAspectRatio="xMidYMid meet"
-          />
+
           <rect className="ws-shine" x="-30" y="0" width="20" height="114" fill="#ffffff" opacity="0.3" transform="skewX(-18)" />
         </svg>
         <div className="flex flex-col text-left">
