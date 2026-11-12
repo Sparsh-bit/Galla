@@ -9,12 +9,12 @@ const config: CapacitorConfig = {
   appId: "app.galla.mobile",
   appName: "Galla",
   webDir: "www",
-  backgroundColor: "#fbf7ef",
+  backgroundColor: "#f2f7fc",
   ios: { contentInset: "never", scrollEnabled: true, limitsNavigationsToAppBoundDomains: false },
   server: url ? { url, cleartext: url.startsWith("http://"), allowNavigation: [new URL(url).host] } : undefined,
   plugins: {
-    SplashScreen: { launchShowDuration: 900, backgroundColor: "#fbf7ef", showSpinner: false, launchAutoHide: true },
-    StatusBar: { style: "LIGHT", backgroundColor: "#fbf7ef" },
+    SplashScreen: { launchShowDuration: 900, backgroundColor: "#f2f7fc", showSpinner: false, launchAutoHide: true },
+    StatusBar: { style: "LIGHT", backgroundColor: "#f2f7fc" },
     Keyboard: { resize: "native" },
   },
 };

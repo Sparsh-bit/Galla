@@ -3,26 +3,25 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
 <title>Galla</title>
 <style>
-  :root { --ink: #14161f; --paper: #fbf7ef; --amber: #f5a524; --deep: #9a5a12; }
+  :root { --ink: #032048; --paper: #f2f7fc; --accent: #047348; --deep: #032048; }
   * { box-sizing: border-box }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 15px -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: radial-gradient(ellipse at 70% 20%, #fde7bd 0, transparent 50%), var(--paper); -webkit-app-region: drag; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 15px -apple-system, "Segoe UI", system-ui, sans-serif; color: var(--ink); background: radial-gradient(ellipse at 70% 20%, #d9e8f5 0, transparent 50%), var(--paper); -webkit-app-region: drag; }
   main { width: min(420px, 90vw); text-align: center; animation: rise .6s cubic-bezier(.32,.72,0,1) both; }
-  .mark { width: 72px; height: 72px; margin: 0 auto 22px; border-radius: 20px; background: linear-gradient(135deg, #fbbf4a, #e07b12); display: grid; place-items: center; box-shadow: 0 18px 40px -18px #e07b12; animation: pulse 2.4s ease-in-out infinite; }
-  .mark i { width: 36px; height: 18px; border-radius: 6px; background: var(--ink); position: relative; top: 8px; }
-  .mark i::after { content: ""; position: absolute; left: 12px; top: 8px; width: 12px; height: 3px; border-radius: 2px; background: #fbbf4a; }
+  .mark { width: 72px; height: 72px; margin: 0 auto 22px; border-radius: 20px; background: linear-gradient(135deg, #058252, #047348); display: grid; place-items: center; box-shadow: 0 18px 40px -18px rgb(4 115 72 / 0.5); animation: pulse 2.4s ease-in-out infinite; }
+  .mark svg { width: 42px; height: 42px; }
   h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: -.03em; }
   h1 em { font-family: Georgia, serif; font-weight: 500; color: var(--deep); }
-  p { margin: 0 0 26px; color: #6b6458; line-height: 1.5; }
-  code { font-size: 12px; color: #8a8376; }
+  p { margin: 0 0 26px; color: #586a82; line-height: 1.5; }
+  code { font-size: 12px; color: #6b7f98; }
   .row { display: flex; gap: 10px; justify-content: center; -webkit-app-region: no-drag; }
-  button { font: inherit; font-weight: 600; padding: 11px 20px; border-radius: 999px; border: 1px solid #e6dfd1; background: #fff; color: var(--ink); cursor: pointer; transition: transform .09s; }
-  button.primary { background: var(--amber); border-color: var(--amber); color: #2a1b05; }
+  button { font: inherit; font-weight: 600; padding: 11px 20px; border-radius: 999px; border: 1px solid #d7e2ee; background: #fff; color: var(--ink); cursor: pointer; transition: transform .09s; }
+  button.primary { background: linear-gradient(180deg, #058252, #047348); border-color: #047348; color: #fff; }
   button:active { transform: scale(.97); }
   @keyframes rise { from { opacity: 0; transform: translateY(12px); filter: blur(6px) } }
   @keyframes pulse { 50% { transform: scale(1.05) } }
 </style>
 <main>
-  <div class="mark"><i></i></div>
+  <div class="mark" aria-hidden="true"><svg viewBox="0 0 100 114"><path d="M 23 2 L 77 2 L 95 27 C 94 32 85 33 82 29 C 78 33 69 33 66 29 C 62 33 53 33 50 29 C 46 33 37 33 34 29 C 31 33 22 33 19 29 C 16 33 7 32 5 27 Z" fill="#ffffff" opacity=".95"/><path d="M 44 28 C 22 28 8 44 8 68 C 8 93 24 112 50 112 C 72 112 88 98 92 78 L 92 48 L 52 48 L 52 64 L 75 64 C 74 74 65 82 51 82 C 34 82 25 72 25 58 C 25 43 35 34 49 34 L 54 34 Z" fill="#032048"/><rect x="52" y="52" width="28" height="34" rx="4" fill="#ffffff"/><rect x="57" y="59" width="18" height="2.8" rx="1.4" fill="#047348"/><rect x="57" y="66" width="18" height="2.8" rx="1.4" fill="#047348"/><rect x="57" y="73" width="13" height="2.8" rx="1.4" fill="#047348"/></svg></div>
   <h1>Can’t reach <em>your shop</em> right now</h1>
   <p>Galla couldn’t connect to the server. Check the internet or Wi-Fi, then try again.<br><code id="u"></code></p>
   <div class="row"><button class="primary" id="retry">Try again</button><button id="setup">Change server</button></div>

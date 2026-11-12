@@ -8,7 +8,7 @@
     "add:ios": "cap add ios",
     "sync": "cap sync",
     "ios": "cap sync ios && cap open ios",
-    "assets": "npx @capacitor/assets generate --iconBackgroundColor '#f5a524' --splashBackgroundColor '#fbf7ef'"
+    "assets": "npx @capacitor/assets generate --iconBackgroundColor '#f2f7fc' --splashBackgroundColor '#f2f7fc'"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
