@@ -51,6 +51,10 @@ next-env.d.ts
 # macOS AppleDouble files (exFAT volumes)
 ._*
 
+# local marketing & tmp assets
+.galla_tmp/
+galla-marketing/
+
 # desktop app
 /desktop/node_modules/
 /desktop/dist/

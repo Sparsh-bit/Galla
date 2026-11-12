@@ -14,7 +14,7 @@ export async function AppDownloads() {
   return (
     <div className="space-y-10">
       <section aria-labelledby="dl-desktop">
-        <h3 id="dl-desktop" className="flex items-center gap-2 text-lg font-bold"><Monitor className="size-5 text-brand-deep" /> Desktop</h3>
+        <h3 id="dl-desktop" className="flex items-center gap-2 text-lg font-bold text-[#032048]"><Monitor className="size-5 text-[#047348]" /> Desktop</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {DESKTOP.map((d) => {
             const href = links[d.file];
@@ -22,7 +22,7 @@ export async function AppDownloads() {
               <span className="flex items-start gap-3">
                 {d.id === "windows" ? <WindowsLogo className="mt-0.5 size-6 shrink-0 text-[#0078d4]" /> : <AppleLogo className="mt-0.5 size-6 shrink-0 text-foreground" />}
                 <span>
-                <span className="block text-base font-bold">{d.label}</span>
+                <span className="block text-base font-bold text-[#032048]">{d.label}</span>
                 <span className="text-xs text-muted-foreground">{d.sub}</span>
                 <span className="mt-1 block font-mono text-[10px] text-muted-foreground/80">{href ? `${d.file}${version ? ` · v${version}` : ""}` : "Available soon"}</span>
                 </span>
@@ -36,7 +36,7 @@ export async function AppDownloads() {
             ) : (
               <div key={d.id} aria-disabled="true" className="flex items-center justify-between gap-3 rounded-2xl border border-dashed border-border bg-card/60 p-5">
                 {text}
-                <span className="rounded-full bg-primary/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-brand-deep">Soon</span>
+                <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#047348]">Soon</span>
               </div>
             );
           })}
@@ -47,15 +47,15 @@ export async function AppDownloads() {
       </section>
 
       <section aria-labelledby="dl-mobile">
-        <h3 id="dl-mobile" className="flex items-center gap-2 text-lg font-bold"><Smartphone className="size-5 text-brand-deep" /> Phone & tablet</h3>
+        <h3 id="dl-mobile" className="flex items-center gap-2 text-lg font-bold text-[#032048]"><Smartphone className="size-5 text-[#047348]" /> Phone & tablet</h3>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {MOBILE.map((m) => {
             const url = m.url();
             const body = (
               <span className="flex w-full items-center gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/15 text-brand-deep"><m.icon className="size-5" /></span>
-                <span className="min-w-0 flex-1"><span className="block text-base font-bold">{m.name}</span><span className="text-xs text-muted-foreground">{url ? `Get it on ${m.store}` : `On the ${m.store} soon`}</span></span>
-                {!url && <span className="rounded-full bg-primary/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-brand-deep">Coming soon</span>}
+                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-[#047348]"><m.icon className="size-5" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-base font-bold text-[#032048]">{m.name}</span><span className="text-xs text-muted-foreground">{url ? `Get it on ${m.store}` : `On the ${m.store} soon`}</span></span>
+                {!url && <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#047348]">Coming soon</span>}
               </span>
             );
             return url ? (

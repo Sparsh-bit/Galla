@@ -16,7 +16,7 @@ const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], style: 
 const mono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "Galla — Your shop’s digital cash box", template: "%s · Galla" },
+  title: { default: "Galla by Concilio — Modern Shop POS, Billing & Inventory", template: "%s · Galla" },
   description: "Billing, stock, khata and GST in one app, built for Indian shops. Works with barcode scanners, receipt printers, your phone camera, and offline. Powered by Concilio Solutions.",
   applicationName: "Galla",
   authors: [{ name: "Concilio Solutions", url: "https://concilio.solutions" }],
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbf7ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1015" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#050e1c" },
   ],
   width: "device-width",
   initialScale: 1,

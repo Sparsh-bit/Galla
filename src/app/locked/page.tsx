@@ -10,7 +10,7 @@ export default function LockedPage() {
   return (
     <div className="grid min-h-dvh place-items-center bg-background px-4 text-center">
       <div className="max-w-md space-y-5">
-        <Logo className="text-3xl" />
+        <Logo className="text-3xl justify-center" />
         <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-destructive/10 text-destructive"><Lock className="size-6" /></span>
         <h1 className="text-3xl font-extrabold tracking-tight">Your subscription has expired</h1>
         <p className="text-sm text-muted-foreground">This Galla account is locked, so billing and stock are paused on every device. Your data is safe. Contact Concilio Solutions to renew and it unlocks straight away.</p>

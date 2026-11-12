@@ -131,7 +131,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <Avatar className="size-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg bg-primary/10 text-primary">{initials(org.userName)}</AvatarFallback>
+                    <AvatarFallback className="rounded-lg bg-emerald-500/15 text-[#047348] font-semibold">{initials(org.userName)}</AvatarFallback>
                   </Avatar>
                   <span className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{org.userName}</span>

@@ -17,8 +17,8 @@ export default function DownloadPage() {
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-        <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-brand-deep">Get the apps</p>
-        <h1 className="mt-3 text-balance text-4xl font-extrabold tracking-[-0.05em] sm:text-6xl">Galla on <span className="serif-accent">every screen.</span></h1>
+        <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-[#047348]">Get the apps</p>
+        <h1 className="mt-3 text-balance text-4xl font-extrabold tracking-[-0.05em] text-[#032048] sm:text-6xl">Galla on <span className="serif-accent">every screen.</span></h1>
         <p className="mt-4 max-w-xl text-muted-foreground">The same shop, bills and stock on your counter PC, laptop and phone. Desktop apps print silently to any installed printer and keep billing offline.</p>
 
         <div className="mt-12"><AppDownloads /></div>

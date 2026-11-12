@@ -269,8 +269,8 @@ function MetricCard({
   trend?: "up" | "down" | null;
 }) {
   const colors = {
-    blue: "bg-primary/20 text-brand-deep",
-    violet: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
+    blue: "bg-emerald-500/15 text-[#047348] dark:text-emerald-400",
+    violet: "bg-[#032048]/10 text-[#032048] dark:text-sky-300",
     green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   }[accent];

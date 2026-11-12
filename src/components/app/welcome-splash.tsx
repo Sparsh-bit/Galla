@@ -37,29 +37,62 @@ export function WelcomeSplash() {
     <div className="welcome-splash" aria-hidden="true">
       <div className="ws-glow" />
       <div className="ws-stage">
-        <svg viewBox="0 0 32 32" className="ws-tile">
+        <svg viewBox="0 0 100 114" className="ws-tile">
           <defs>
-            <linearGradient id="ws-tile-g" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fbbf4a" />
-              <stop offset="1" stopColor="#e07b12" />
+            <linearGradient id="ws-green" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#058252" />
+              <stop offset="100%" stopColor="#047348" />
+            </linearGradient>
+            <linearGradient id="ws-navy" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#062b5d" />
+              <stop offset="100%" stopColor="#032048" />
             </linearGradient>
           </defs>
-          <rect width="32" height="32" rx="8" fill="url(#ws-tile-g)" />
+          {/* Canopy awning */}
           <g className="ws-coin">
-            <circle cx="16" cy="8.6" r="3.9" fill="#14161f" />
-            <path d="M14 7.2h4M14 8.9h4M14.2 7.2c2.7 0 2.7 3 0 3H14l3.1 2.6" fill="none" stroke="#fbbf4a" strokeWidth="0.85" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M 23 2 L 77 2 L 95 27 C 94 32 85 33 82 29 C 78 33 69 33 66 29 C 62 33 53 33 50 29 C 46 33 37 33 34 29 C 31 33 22 33 19 29 C 16 33 7 32 5 27 Z"
+              fill="url(#ws-green)"
+            />
           </g>
+          {/* Navy G body */}
           <g className="ws-drawer">
-            <path d="M6.5 16.5c0-.8.7-1.5 1.5-1.5h16c.8 0 1.5.7 1.5 1.5V17H6.5z" fill="#14161f" />
-            <rect x="5.5" y="16.6" width="21" height="9.6" rx="2.6" fill="#14161f" />
-            <rect x="12.5" y="20.4" width="7" height="1.8" rx="0.9" fill="#fbbf4a" />
+            <path
+              d="M 44 28 C 22 28 8 44 8 68 C 8 93 24 112 50 112 C 72 112 88 98 92 78 L 92 48 L 52 48 L 52 64 L 75 64 C 74 74 65 82 51 82 C 34 82 25 72 25 58 C 25 43 35 34 49 34 L 54 34 Z"
+              fill="url(#ws-navy)"
+            />
+            {/* Emerald billing document inside G */}
+            <rect x="52" y="52" width="28" height="34" rx="4" fill="url(#ws-green)" />
+            <rect x="57" y="59" width="18" height="2.8" rx="1.4" fill="#ffffff" />
+            <rect x="57" y="66" width="18" height="2.8" rx="1.4" fill="#ffffff" />
+            <rect x="57" y="73" width="13" height="2.8" rx="1.4" fill="#ffffff" />
           </g>
-          <rect className="ws-shine" x="-12" y="0" width="8" height="32" fill="#fff" opacity="0.35" transform="skewX(-18)" />
+          <image
+            href="/brand/logo-mark.png"
+            x="0"
+            y="0"
+            width="100"
+            height="114"
+            preserveAspectRatio="xMidYMid meet"
+          />
+          <rect className="ws-shine" x="-30" y="0" width="20" height="114" fill="#ffffff" opacity="0.3" transform="skewX(-18)" />
         </svg>
-        <p className="ws-word">
-          {"galla".split("").map((c, i) => <span key={i} style={{ animationDelay: `${700 + i * 70}ms` }}>{c}</span>)}
-          <span className="ws-dot" />
-        </p>
+        <div className="flex flex-col text-left">
+          <p className="ws-word">
+            {"Galla".split("").map((c, i) => (
+              <span key={i} style={{ animationDelay: `${700 + i * 70}ms` }}>
+                {c}
+              </span>
+            ))}
+            <span className="ws-dot" />
+          </p>
+          <p
+            className="text-[1.2rem] font-semibold text-[#032048]/80 dark:text-slate-300"
+            style={{ animation: "ws-fade 600ms ease 1200ms both" }}
+          >
+            by Concilio
+          </p>
+        </div>
       </div>
       <p className="ws-tag">Your shop&rsquo;s <em>digital cash box.</em></p>
       <p className="ws-power">Powered by Concilio Solutions</p>
