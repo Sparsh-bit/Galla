@@ -7,7 +7,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Optimistic gate only (real checks happen server-side on every page and action).
-  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon") || pathname.startsWith("/brand/") || pathname.startsWith("/.well-known/");
+  const isPublic = PUBLIC.includes(pathname) || pathname.startsWith("/accept-invite/") || pathname.startsWith("/bill/") || pathname.startsWith("/icon") || pathname.startsWith("/brand/") || pathname.startsWith("/downloads/") || pathname.startsWith("/.well-known/");
   const hasSession = SESSION_COOKIES.some((c) => request.cookies.has(c));
   if (!isPublic && !hasSession && pathname.startsWith("/provider")) return NextResponse.redirect(new URL("/provider/sign-in", request.url));
   if (!isPublic && !hasSession && !pathname.startsWith("/api/")) {
@@ -54,7 +54,7 @@ export const config = {
   matcher: [
     {
       // /api/docs sets its own headers (the app CSP would stop browsers showing PDFs)
-      source: "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw.js|api/docs).*)",
+      source: "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|sw.js|api/docs|downloads).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

@@ -102,3 +102,16 @@ test("REST API: browser cookie writes from another site are refused", async ({ p
   const same = await page.request.post("/api/v1/customers", { headers: { Origin: new URL(baseURL!).origin }, data: { name: "Same-origin Customer" } });
   expect(same.status(), await same.text()).toBe(200);
 });
+
+test("the Android APK downloads as a file for visitors who aren't signed in, and /api/version announces updates", async ({ request }) => {
+  const apk = await request.get("/downloads/Galla-android.apk", { maxRedirects: 0, headers: { Range: "bytes=0-3" } });
+  expect([200, 206], "APK must be public, not a redirect to sign-in").toContain(apk.status());
+  expect(apk.headers()["content-type"]).toBe("application/vnd.android.package-archive");
+  expect(apk.headers()["content-disposition"]).toContain("attachment");
+  expect((await apk.body()).subarray(0, 2).toString()).toBe("PK"); // an APK is a zip file
+
+  const v = await (await request.get("/api/version")).json();
+  expect(v).toHaveProperty("build");
+  expect(v).toHaveProperty("minAndroidVersion");
+  expect(v).toHaveProperty("android"); // null until ANDROID_APP_VERSION is set
+});

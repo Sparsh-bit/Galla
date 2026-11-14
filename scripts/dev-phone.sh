@@ -14,7 +14,7 @@ if [ ! -f "$CERT" ] || ! openssl x509 -in "$CERT" -noout -text | grep -q "IP Add
     -addext "subjectAltName=DNS:localhost,IP:127.0.0.1,IP:$IP" -keyout "$KEY" -out "$CERT" 2>/dev/null
 fi
 [ -f .data/dev-secret ] || openssl rand -base64 48 > .data/dev-secret
-export MONGODB_URI="${MONGODB_URI:-mongodb://127.0.0.1:27017/stockpilot?replicaSet=rs0}"
+export MONGODB_URI="${MONGODB_URI:-mongodb://127.0.0.1:27017/galla?replicaSet=rs0}"
 export BETTER_AUTH_SECRET="${BETTER_AUTH_SECRET:-$(cat .data/dev-secret)}"
 export APP_URL="https://$IP:${PORT:-3000}"
 export MAIL_SINK="${MAIL_SINK:-file}"

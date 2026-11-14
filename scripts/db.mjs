@@ -50,7 +50,7 @@ export async function startDb() {
     if (mongosh("db.hello().isWritablePrimary").out === "true") break;
     await sleep(500);
   }
-  return `mongodb://127.0.0.1:${PORT}/stockpilot?replicaSet=rs0`;
+  return `mongodb://127.0.0.1:${PORT}/galla?replicaSet=rs0`;
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

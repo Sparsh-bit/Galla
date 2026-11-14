@@ -22,6 +22,10 @@ const schema = z.object({
   DESKTOP_RELEASE_BASE: z.string().optional(),
   IOS_APP_URL: z.string().optional(),
   ANDROID_APP_URL: z.string().optional(),
+  // Newest published Android APK (e.g. "1.2.0") and its address (default: the APK bundled at /downloads). Installed apps
+  // read this from /api/version and offer the update. Leave unset until a new APK is published.
+  ANDROID_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  ANDROID_APK_URL: z.string().max(500).optional(),
   // Where "Request access" sends people (the Concilio Solutions booking page).
   REQUEST_ACCESS_URL: z.url().optional(),
   // Anyone may sign up ("true"), or only people with a pending team invitation (default: accounts are

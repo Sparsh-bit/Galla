@@ -2,7 +2,7 @@
 // Galla print bridge — forwards ESC/POS bytes from the browser to a network (LAN) receipt
 // printer on port 9100. Run it on any always-on computer in the shop. Zero dependencies.
 //
-//   node bridge.mjs --printer 192.168.1.50 --key "long-random-secret" --origin https://your-stockpilot-domain
+//   node bridge.mjs --printer 192.168.1.50 --key "long-random-secret" --origin https://your-galla-domain
 //
 // Then in Galla: Settings → Printer & scanner → Network (LAN), enter the same key.
 import { timingSafeEqual } from "node:crypto";

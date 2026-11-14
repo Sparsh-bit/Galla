@@ -60,3 +60,10 @@ galla-marketing/
 /desktop/dist/
 /mobile/node_modules/
 /mobile/ios/App/Pods/
+
+# editor / agent / macOS junk
+.claude/
+.kilo/
+.continue/
+.galla_tmp/
+._*

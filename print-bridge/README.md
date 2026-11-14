@@ -8,7 +8,7 @@ Requires Node.js 20+ and has no other dependencies.
 2. On a computer that stays on in the shop, run:
 
    ```bash
-   node print-bridge/bridge.mjs --printer 192.168.1.50 --key "choose-a-long-secret" --origin https://your-stockpilot-domain
+   node print-bridge/bridge.mjs --printer 192.168.1.50 --key "choose-a-long-secret" --origin https://your-galla-domain
    ```
 
 3. In Galla open **Settings → Printer & scanner → Network (LAN)**. Keep the address `http://127.0.0.1:9123` when using Galla on that same computer, enter the same key, then click **Print test page**.

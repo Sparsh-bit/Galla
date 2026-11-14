@@ -82,7 +82,7 @@ This runs the app and MongoDB 8 as a replica set, with persistent volumes for da
 
 **Railway (recommended managed host):**
 
-1. **Database:** create a free cluster on [MongoDB Atlas](https://www.mongodb.com/atlas) (Atlas is a replica set, which the app needs for transactions). Under *Network Access* allow `0.0.0.0/0`, or Railway's static egress IPs if you have them. Copy the `mongodb+srv://…` connection string and add a database name, e.g. `…mongodb.net/stockpilot?retryWrites=true&w=majority`. Railway's one-click MongoDB template is a single server without a replica set and will not work.
+1. **Database:** create a free cluster on [MongoDB Atlas](https://www.mongodb.com/atlas) (Atlas is a replica set, which the app needs for transactions). Under *Network Access* allow `0.0.0.0/0`, or Railway's static egress IPs if you have them. Copy the `mongodb+srv://…` connection string and add a database name, e.g. `…mongodb.net/galla?retryWrites=true&w=majority`. Railway's one-click MongoDB template is a single server without a replica set and will not work.
 2. **App:** in Railway choose *New project → Deploy from GitHub repo*. It finds `railway.json` and builds the `Dockerfile`.
 3. **Variables:** run `bash scripts/railway-env.sh`. It prints every variable with fresh secrets. Paste the output into service → *Variables* → *Raw Editor* and fill in the `REPLACE_ME` values:
 

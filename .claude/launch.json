@@ -1,6 +1,0 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    { "name": "galla", "runtimeExecutable": "node", "runtimeArgs": ["scripts/dev.mjs"], "port": 3000 }
-  ]
-}

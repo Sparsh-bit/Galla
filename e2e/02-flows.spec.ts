@@ -25,6 +25,8 @@ test("add a product by scanning its barcode, then sell it: qty starts at 1 and c
   await expect(page.getByText("12 pcs")).toBeVisible();
 
   await page.goto("/pos");
+  // The scanner listens once the POS has hydrated, as in every other POS test.
+  await expect(page.getByRole("textbox", { name: "Search product or scan barcode" })).toBeVisible();
   await scan(page, "8909999000017");
   const cart = page.getByRole("list", { name: "Cart items" });
   await expect(cart.getByText("E2E Biscuits 200g")).toBeVisible();
