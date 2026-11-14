@@ -1,4 +1,5 @@
 import "server-only";
+import { API_ROUTES, type PathParams, type RouteName, type RouteSpec } from "@/lib/api/routes";
 import * as authA from "../actions/auth";
 import * as einvoice from "../actions/einvoice";
 import * as imports from "../actions/imports";
@@ -12,165 +13,206 @@ import * as sales from "../actions/sales";
 import * as settingsA from "../actions/settings";
 import type { Ctx } from "../context";
 import type { ActionResult } from "../with-auth";
+import type { Json } from "./json";
 import * as Q from "./queries";
 
-// Galla REST API v1: one table for every platform (web, Windows, macOS, iOS, Android).
+// Galla REST API v1: one handler for every route in src/lib/api/routes.ts (the shared list).
 // Writes call the exact same validated, permission-checked actions the web app uses, so every
 // business rule (stock, GST, khata, serials, offline sync) lives in one place.
+//
+// `ApiTypes` (bottom) is what native apps type-check against: for each route, the input a client
+// sends and the `data` it gets back. It is derived from the actions and queries themselves, so it
+// cannot fall out of date.
 
-export type Method = "GET" | "POST" | "PUT" | "DELETE";
 export interface Req {
   params: Record<string, string>;
   query: Q.Query;
   body: Record<string, unknown>;
   form: FormData | null;
 }
-export type Route =
-  | { method: Method; path: string; summary: string; kind: "action"; run: (r: Req) => Promise<ActionResult<unknown>>; public?: boolean }
-  | { method: Method; path: string; summary: string; kind: "query"; run: (ctx: Ctx, r: Req) => Promise<unknown> };
 
 type AnyAction = (input: never) => Promise<ActionResult<unknown>>;
-const call = (fn: AnyAction, input: unknown) => fn(input as never);
+type In<F> = F extends (input: infer I) => unknown ? I : never;
+type Out<F> = F extends (...args: never[]) => Promise<infer R> ? Extract<R, { ok: true }> extends { data: infer D } ? D : never : never;
 
-/** A write backed by an existing action; `map` builds the action input from the request. */
-const act = (method: Method, path: string, summary: string, fn: AnyAction, map: (r: Req) => unknown = (r) => r.body, isPublic = false): Route => ({
-  method, path, summary, kind: "action", run: (r) => call(fn, map(r)), public: isPublic,
-});
+/** Type-only marker carrying what clients send and receive. Never set at runtime. */
+interface Types<I, O> {
+  readonly __types?: { input: I; output: O };
+}
+export interface ActionHandler<I = unknown, O = unknown> extends Types<I, O> {
+  kind: "action";
+  run: (r: Req, spec: RouteSpec) => Promise<ActionResult<unknown>>;
+}
+export interface QueryHandler<O = unknown> extends Types<never, O> {
+  kind: "query";
+  run: (ctx: Ctx, r: Req) => Promise<O>;
+}
+type Handler = ActionHandler<unknown, unknown> | QueryHandler<unknown>;
+
+const pick = (src: Record<string, unknown>, keys: readonly string[] = []) => Object.fromEntries(keys.filter((k) => src[k] !== undefined).map((k) => [k, src[k]]));
+
+/**
+ * A route backed by an action. By default the action input is the JSON body (or, for GET, the
+ * route's declared query keys) plus the path parameters, which are named after input fields.
+ */
+function act<F extends AnyAction>(fn: F, map?: (r: Req) => In<F>): ActionHandler<In<F>, Out<F>> {
+  return {
+    kind: "action",
+    run: (r, spec) => fn((map ? map(r) : { ...(spec.method === "GET" ? pick(r.query, spec.query) : r.body), ...r.params }) as never),
+  };
+}
+/** An action whose REST input differs in shape from the action's own input (declared as `I`). */
+const actAs =
+  <I>() =>
+  <F extends AnyAction>(fn: F, map: (r: Req) => In<F>): ActionHandler<I, Out<F>> => ({ kind: "action", run: (r) => fn(map(r) as never) });
 /** A read; errors and permissions are handled by the dispatcher and the query itself. */
-const get = (path: string, summary: string, run: (ctx: Ctx, r: Req) => Promise<unknown>): Route => ({ method: "GET", path, summary, kind: "query", run });
+const get = <O>(run: (ctx: Ctx, r: Req) => Promise<O>): QueryHandler<O> => ({ kind: "query", run });
 
-const withId = (key: string) => (r: Req) => ({ ...r.body, [key]: r.params.id });
-const qs = (r: Req, ...keys: string[]) => Object.fromEntries(keys.filter((k) => r.query[k] !== undefined).map((k) => [k, r.query[k]]));
-const form = (r: Req) => r.form ?? new FormData();
+const body = <T>(r: Req) => r.body as T;
+type Without<T, K extends string> = Omit<T, K>;
+type ProductData = In<typeof products.saveProduct>["data"];
+type PartyData = Without<In<typeof parties.upsertParty>["data"], "kind">;
+type PoData = In<typeof purchases.savePO>["data"];
+type CategoryInput = Without<In<typeof products.saveCategory>, "id" | "parentId"> & { parentId?: string | null };
+type MultipartImport = { kind: "products" | "customers" | "suppliers"; file: Blob };
 
-export const ROUTES: Route[] = [
-  /* ---------- auth & account (Better Auth's own endpoints live under /api/auth/*) ---------- */
-  act("POST", "/auth/sign-in", "Sign in with email + password. Returns { token } for native apps (send as Authorization: Bearer).", authA.signInAction, (r) => r.body, true),
-  act("POST", "/auth/sign-up", "Create an account; a verification email is sent.", authA.signUpAction, (r) => ({ next: "/onboarding", ...r.body }), true),
-  act("POST", "/auth/verification-email", "Resend the verification email.", authA.resendVerificationAction, (r) => r.body, true),
-  act("POST", "/auth/password-reset", "Email a password reset link.", authA.requestResetAction, (r) => r.body, true),
-  act("POST", "/auth/password-reset/confirm", "Set a new password with the emailed token.", authA.resetPasswordAction, (r) => r.body, true),
-  act("POST", "/auth/two-factor/verify", "Finish a sign-in that needs a 2FA code.", authA.verifyTwoFactorAction, (r) => r.body, true),
-  act("POST", "/account/password", "Change password.", authA.changePasswordAction),
-  act("POST", "/account/two-factor/enable", "Start 2FA setup (returns the TOTP URI and backup codes).", authA.enableTwoFactorAction),
-  act("POST", "/account/two-factor/confirm", "Confirm 2FA with a code.", authA.confirmTwoFactorAction),
-  act("POST", "/account/two-factor/disable", "Turn 2FA off.", authA.disableTwoFactorAction),
-  act("POST", "/invitations/:id/accept", "Accept a team invitation.", authA.acceptInviteAction, (r) => ({ invitationId: r.params.id })),
-  get("/me", "Signed-in user, active business (currency, locale, role) and all their businesses.", (ctx) => Q.me(ctx)),
+const HANDLERS = {
+  /* ---------- auth & account ---------- */
+  "auth.signIn": act(authA.signInAction),
+  "auth.signUp": actAs<Without<In<typeof authA.signUpAction>, "next"> & { next?: string }>()(authA.signUpAction, (r) => ({ next: "/onboarding", ...body<{ name: string; email: string; password: string }>(r) })),
+  "auth.resendVerification": act(authA.resendVerificationAction),
+  "auth.requestPasswordReset": act(authA.requestResetAction),
+  "auth.resetPassword": act(authA.resetPasswordAction),
+  "auth.verifyTwoFactor": act(authA.verifyTwoFactorAction),
+  "auth.signOut": actAs<Record<string, never>>()(authA.signOutAction, () => undefined as never),
+  "account.updateName": act(authA.updateNameAction),
+  "account.changePassword": act(authA.changePasswordAction),
+  "account.enableTwoFactor": act(authA.enableTwoFactorAction),
+  "account.confirmTwoFactor": act(authA.confirmTwoFactorAction),
+  "account.disableTwoFactor": act(authA.disableTwoFactorAction),
+  "account.deletionPreview": actAs<Record<string, never>>()(authA.accountDeletionPreview, () => undefined as never),
+  "account.delete": act(authA.deleteAccountAction),
+  "invitations.accept": act(authA.acceptInviteAction),
+  me: get((ctx) => Q.me(ctx)),
 
   /* ---------- businesses ---------- */
-  act("POST", "/businesses", "Create a business (onboarding).", onboarding.createBusiness),
-  act("POST", "/businesses/:id/switch", "Make another business active.", onboarding.switchBusiness as AnyAction, (r) => r.params.id),
+  "businesses.create": act(onboarding.createBusiness),
+  "businesses.switch": actAs<{ organizationId: string }>()(onboarding.switchBusiness, (r) => r.params.organizationId),
 
   /* ---------- dashboard & reports ---------- */
-  get("/dashboard", "Today vs yesterday, 30-day sales, top products, low stock, expiring batches, dues, recent bills.", (ctx) => Q.dashboard(ctx)),
-  get("/reports", "All reports for ?from=YYYY-MM-DD&to=YYYY-MM-DD (sales, payments, cashiers, categories, GST/HSN, stock, expiry, dues).", (ctx, r) => Q.reports(ctx, r.query)),
+  dashboard: get((ctx) => Q.dashboard(ctx)),
+  reports: get((ctx, r) => Q.reports(ctx, r.query)),
 
   /* ---------- products ---------- */
-  get("/products", "List products (?q, ?category, ?status=archived, ?page).", (ctx, r) => Q.listProducts(ctx, r.query)),
-  get("/products/form-data", "Categories, tax rates, locations and defaults for the product form.", (ctx) => Q.productFormData(ctx)),
-  act("GET", "/products/search", "POS search (?q, ?locationId).", products.searchProducts, (r) => ({ q: r.query.q ?? "", ...qs(r, "locationId") })),
-  act("GET", "/products/lookup", "Find by barcode/SKU/serial (?code, ?locationId).", products.lookupCode, (r) => ({ code: r.query.code ?? "", ...qs(r, "locationId") })),
-  get("/products/:id", "Product with stock by location and recent movements.", (ctx, r) => Q.getProduct(ctx, r.params.id)),
-  act("POST", "/products", "Create a product.", products.saveProduct, (r) => ({ id: null, data: r.body })),
-  act("PUT", "/products/:id", "Update a product.", products.saveProduct, (r) => ({ id: r.params.id, data: r.body })),
-  act("PUT", "/products/:id/active", "Archive or restore ({ active }).", products.archiveProduct, withId("id")),
-  act("GET", "/variants/:id/serials", "Serials in stock (?locationId).", products.availableSerials, (r) => ({ variantId: r.params.id, locationId: r.query.locationId })),
-  act("GET", "/variants/:id/batches", "Batches with stock (?locationId).", inventory.variantBatches, (r) => ({ variantId: r.params.id, locationId: r.query.locationId })),
+  "products.list": get((ctx, r) => Q.listProducts(ctx, r.query)),
+  "products.formData": get((ctx) => Q.productFormData(ctx)),
+  "products.search": act(products.searchProducts, (r) => ({ q: r.query.q ?? "", ...pick(r.query, ["locationId"]) })),
+  "products.lookup": act(products.lookupCode, (r) => ({ code: r.query.code ?? "", ...pick(r.query, ["locationId"]) })),
+  "products.get": get((ctx, r) => Q.getProduct(ctx, r.params.id)),
+  "products.create": actAs<ProductData>()(products.saveProduct, (r) => ({ id: null, data: body<ProductData>(r) })),
+  "products.update": actAs<ProductData & { id: string }>()(products.saveProduct, (r) => ({ id: r.params.id, data: body<ProductData>(r) })),
+  "products.setActive": act(products.archiveProduct),
+  "variants.serials": act(products.availableSerials),
+  "variants.batches": act(inventory.variantBatches),
 
-  get("/categories", "List categories.", (ctx) => Q.listCategories(ctx)),
-  act("POST", "/categories", "Create a category.", products.saveCategory, (r) => ({ id: null, parentId: null, ...r.body })),
-  act("PUT", "/categories/:id", "Rename/move a category.", products.saveCategory, (r) => ({ parentId: null, ...r.body, id: r.params.id })),
-  act("DELETE", "/categories/:id", "Delete an empty category.", products.deleteCategory, (r) => ({ id: r.params.id })),
+  "categories.list": get((ctx) => Q.listCategories(ctx)),
+  "categories.create": actAs<CategoryInput>()(products.saveCategory, (r) => ({ id: null, parentId: null, ...body<CategoryInput>(r) })),
+  "categories.update": actAs<CategoryInput & { id: string }>()(products.saveCategory, (r) => ({ parentId: null, ...body<CategoryInput>(r), id: r.params.id })),
+  "categories.delete": act(products.deleteCategory),
 
-  act("GET", "/tax-rates", "List tax rates.", products.listTaxRates, () => ({})),
-  act("POST", "/tax-rates", "Create a tax rate.", settingsA.saveTaxRate, (r) => ({ id: null, ...r.body })),
-  act("PUT", "/tax-rates/:id", "Update a tax rate.", settingsA.saveTaxRate, withId("id")),
-  act("DELETE", "/tax-rates/:id", "Delete a tax rate.", settingsA.deleteTaxRate, (r) => ({ id: r.params.id })),
+  "taxRates.list": act(products.listTaxRates, () => ({})),
+  "taxRates.create": actAs<Without<In<typeof settingsA.saveTaxRate>, "id">>()(settingsA.saveTaxRate, (r) => ({ ...body<Without<In<typeof settingsA.saveTaxRate>, "id">>(r), id: null })),
+  "taxRates.update": act(settingsA.saveTaxRate),
+  "taxRates.delete": act(settingsA.deleteTaxRate),
 
-  get("/locations", "Shops and warehouses.", (ctx) => Q.listLocations(ctx)),
-  act("POST", "/locations", "Add a location.", inventory.saveLocation, (r) => ({ id: null, ...r.body })),
-  act("PUT", "/locations/:id", "Update a location.", inventory.saveLocation, withId("id")),
+  "locations.list": get((ctx) => Q.listLocations(ctx)),
+  "locations.create": actAs<Without<In<typeof inventory.saveLocation>, "id">>()(inventory.saveLocation, (r) => ({ ...body<Without<In<typeof inventory.saveLocation>, "id">>(r), id: null })),
+  "locations.update": act(inventory.saveLocation),
 
   /* ---------- inventory ---------- */
-  get("/stock", "Stock by product and location (?q, ?location, ?filter=low, ?page).", (ctx, r) => Q.listStock(ctx, r.query)),
-  get("/stock/moves", "Movement history (?from, ?to, ?type, ?product, ?page).", (ctx, r) => Q.listMoves(ctx, r.query)),
-  get("/serials", "Serial / IMEI register (?q, ?status, ?page).", (ctx, r) => Q.listSerials(ctx, r.query)),
-  act("POST", "/stock/adjustments", "Adjust stock with a reason.", inventory.adjust),
-  act("POST", "/stock/transfers", "Transfer stock between locations.", inventory.transfer),
-  act("POST", "/stock/counts", "Post a stock count.", inventory.count),
+  "stock.list": get((ctx, r) => Q.listStock(ctx, r.query)),
+  "stock.moves": get((ctx, r) => Q.listMoves(ctx, r.query)),
+  "serials.list": get((ctx, r) => Q.listSerials(ctx, r.query)),
+  "stock.adjust": act(inventory.adjust),
+  "stock.transfer": act(inventory.transfer),
+  "stock.count": act(inventory.count),
 
   /* ---------- point of sale & sales ---------- */
-  act("POST", "/sales", "Complete a sale (checkout).", sales.checkout),
-  get("/sales", "Bills (?from, ?to, ?q, ?type=return|credit|void|invoice|review, ?page).", (ctx, r) => Q.listSales(ctx, r.query)),
-  act("GET", "/sales/:id", "Full bill: lines, taxes, payments, customer, e-invoice.", sales.receiptData, (r) => ({ saleId: r.params.id })),
-  act("POST", "/sales/:id/refund", "Return items (credit note).", sales.refundSale, withId("saleId")),
-  act("POST", "/sales/:id/void", "Void a same-day sale ({ reason }).", sales.cancelSale, withId("saleId")),
-  act("POST", "/sales/:id/share-link", "Secure link for WhatsApp bills.", sales.billShareLink, (r) => ({ saleId: r.params.id })),
-  act("POST", "/sales/:id/reviewed", "Mark an offline-sync issue as reviewed.", offline.markSaleReviewed, (r) => ({ saleId: r.params.id })),
-  act("POST", "/sales/:id/einvoice", "Generate IRN + signed QR.", einvoice.createIrn, (r) => ({ saleId: r.params.id })),
-  act("POST", "/sales/:id/einvoice/cancel", "Cancel the IRN ({ reason, remark }).", einvoice.voidIrn, withId("saleId")),
-  act("POST", "/sales/:id/eway-bill", "Generate an e-way bill ({ details }).", einvoice.createEwb, withId("saleId")),
-  act("POST", "/sales/:id/gst-json", "GST JSON for manual upload ({ type, details? }).", einvoice.downloadGstJson, withId("saleId")),
+  "sales.checkout": act(sales.checkout),
+  "sales.list": get((ctx, r) => Q.listSales(ctx, r.query)),
+  "sales.get": act(sales.receiptData),
+  "sales.detail": get((ctx, r) => Q.saleDetail(ctx, r.params.saleId)),
+  "sales.refund": act(sales.refundSale),
+  "sales.void": act(sales.cancelSale),
+  "sales.shareLink": act(sales.billShareLink),
+  "sales.markReviewed": act(offline.markSaleReviewed),
+  "sales.einvoice": act(einvoice.createIrn),
+  "sales.einvoiceCancel": act(einvoice.voidIrn),
+  "sales.ewayBill": act(einvoice.createEwb),
+  "sales.gstJson": act(einvoice.downloadGstJson),
 
-  act("GET", "/held-bills", "Parked bills (?locationId).", sales.listHeldBills, (r) => ({ locationId: r.query.locationId })),
-  act("POST", "/held-bills", "Park a bill (F8).", sales.holdBill),
-  act("POST", "/held-bills/:id/resume", "Bring a parked bill back (F9).", sales.resumeHeldBill, (r) => ({ id: r.params.id })),
-  act("DELETE", "/held-bills/:id", "Discard a parked bill.", sales.discardHeldBill, (r) => ({ id: r.params.id })),
-  act("GET", "/pos/batches", "Batches a cashier can sell from (?variantId, ?locationId).", sales.listBatches, (r) => ({ variantId: r.query.variantId, locationId: r.query.locationId })),
-  act("GET", "/pos/customers", "Customer picker search (?q).", sales.findCustomers, (r) => ({ q: r.query.q ?? "" })),
-  act("POST", "/pos/customers", "Quick-add a customer at the till.", sales.quickAddCustomer),
-  act("GET", "/pos/snapshot", "Offline catalogue snapshot for a till (?locationId).", offline.getPosSnapshot, (r) => ({ locationId: r.query.locationId })),
-  act("POST", "/pos/tills", "Register this device as a till ({ name }).", offline.registerTill),
-  act("POST", "/pos/offline-sales", "Sync bills made offline ({ deviceToken, sales }).", offline.syncOfflineSales),
-  act("POST", "/scan-sessions", "Pair a phone as a wireless scanner (returns a token; phones push to /api/scan/:token).", sales.startRemoteScan, () => ({})),
-  act("DELETE", "/scan-sessions/:id", "End a phone-scanner pairing.", sales.stopRemoteScan, (r) => ({ token: r.params.id })),
+  "heldBills.list": act(sales.listHeldBills),
+  "heldBills.hold": act(sales.holdBill),
+  "heldBills.resume": act(sales.resumeHeldBill),
+  "heldBills.discard": act(sales.discardHeldBill),
+  "pos.batches": act(sales.listBatches),
+  "pos.customers": act(sales.findCustomers, (r) => ({ q: r.query.q ?? "" })),
+  "pos.addCustomer": act(sales.quickAddCustomer),
+  "pos.snapshot": act(offline.getPosSnapshot),
+  "pos.registerTill": act(offline.registerTill),
+  "pos.syncOffline": act(offline.syncOfflineSales),
+  "scanSessions.start": actAs<Record<string, never>>()(sales.startRemoteScan, () => ({})),
+  "scanSessions.stop": act(sales.stopRemoteScan),
 
   /* ---------- customers, suppliers, khata ---------- */
-  get("/customers", "Customers (?q, ?due=1, ?page).", (ctx, r) => Q.listParties(ctx, "customer", r.query)),
-  get("/customers/:id", "Customer with bills, running-balance statement and totals.", (ctx, r) => Q.getParty(ctx, "customer", r.params.id)),
-  act("POST", "/customers", "Add a customer.", parties.upsertParty, (r) => ({ id: null, data: { ...r.body, kind: "customer" } })),
-  act("PUT", "/customers/:id", "Update a customer.", parties.upsertParty, (r) => ({ id: r.params.id, data: { ...r.body, kind: "customer" } })),
-  get("/suppliers", "Suppliers (?q, ?due=1, ?page).", (ctx, r) => Q.listParties(ctx, "supplier", r.query)),
-  get("/suppliers/:id", "Supplier with purchases, statement and totals.", (ctx, r) => Q.getParty(ctx, "supplier", r.params.id)),
-  act("POST", "/suppliers", "Add a supplier.", parties.upsertParty, (r) => ({ id: null, data: { ...r.body, kind: "supplier" } })),
-  act("PUT", "/suppliers/:id", "Update a supplier.", parties.upsertParty, (r) => ({ id: r.params.id, data: { ...r.body, kind: "supplier" } })),
-  act("PUT", "/parties/:id/active", "Archive or restore a customer/supplier ({ active }).", parties.archiveParty, withId("id")),
-  act("GET", "/parties/:id/open-bills", "Unpaid bills a payment can be set against.", parties.openBills, (r) => ({ partyId: r.params.id })),
-  act("POST", "/parties/:id/payments", "Record a payment (optionally against chosen bills).", parties.addPayment, withId("partyId")),
-  act("POST", "/parties/:id/udhaar", "Khata: udhaar given/taken without a bill.", parties.addUdhaarEntry, withId("partyId")),
-  act("POST", "/ledger/:id/reverse", "Undo a khata entry or payment ({ reason }); owners/managers.", parties.undoEntry, withId("entryId")),
-  get("/khata", "Khata balances (?tab=suppliers, ?q, ?page) with you'll get / you'll give totals.", (ctx, r) => Q.khata(ctx, r.query)),
+  "customers.list": get((ctx, r) => Q.listParties(ctx, "customer", r.query)),
+  "customers.get": get((ctx, r) => Q.getParty(ctx, "customer", r.params.id)),
+  "customers.create": actAs<PartyData>()(parties.upsertParty, (r) => ({ id: null, data: { ...body<PartyData>(r), kind: "customer" as const } })),
+  "customers.update": actAs<PartyData & { id: string }>()(parties.upsertParty, (r) => ({ id: r.params.id, data: { ...body<PartyData>(r), kind: "customer" as const } })),
+  "suppliers.list": get((ctx, r) => Q.listParties(ctx, "supplier", r.query)),
+  "suppliers.get": get((ctx, r) => Q.getParty(ctx, "supplier", r.params.id)),
+  "suppliers.create": actAs<PartyData>()(parties.upsertParty, (r) => ({ id: null, data: { ...body<PartyData>(r), kind: "supplier" as const } })),
+  "suppliers.update": actAs<PartyData & { id: string }>()(parties.upsertParty, (r) => ({ id: r.params.id, data: { ...body<PartyData>(r), kind: "supplier" as const } })),
+  "parties.setActive": act(parties.archiveParty),
+  "parties.openBills": act(parties.openBills),
+  "parties.addPayment": act(parties.addPayment),
+  "parties.addUdhaar": act(parties.addUdhaarEntry),
+  "ledger.reverse": act(parties.undoEntry),
+  khata: get((ctx, r) => Q.khata(ctx, r.query)),
 
   /* ---------- purchases ---------- */
-  get("/purchases", "Purchase orders and bills (?q, ?status, ?page).", (ctx, r) => Q.listPurchases(ctx, r.query)),
-  get("/purchases/:id", "Purchase with receipts, payments and attachments.", (ctx, r) => Q.getPurchase(ctx, r.params.id)),
-  act("POST", "/purchases", "Create a purchase order.", purchases.savePO, (r) => ({ id: null, data: r.body })),
-  act("PUT", "/purchases/:id", "Edit a purchase order.", purchases.savePO, (r) => ({ id: r.params.id, data: r.body })),
-  act("POST", "/purchases/:id/receive", "Receive goods (partial allowed).", purchases.receivePO, withId("id")),
-  act("POST", "/purchases/:id/return", "Return goods to the supplier.", purchases.returnPO, withId("id")),
-  act("POST", "/purchases/:id/cancel", "Cancel a purchase order.", purchases.cancelPO, (r) => ({ id: r.params.id })),
-  act("POST", "/purchases/:id/attachments", "Attach uploaded bill photos/PDFs ({ files }).", purchases.attachFiles, withId("id")),
-  act("DELETE", "/purchases/:id/attachments", "Remove an attachment ({ url }).", purchases.detachFile, withId("id")),
-  act("POST", "/purchase-bills", "Record a supplier bill in one step (stock in + payment).", purchases.savePurchaseBill),
+  "purchases.list": get((ctx, r) => Q.listPurchases(ctx, r.query)),
+  "purchases.get": get((ctx, r) => Q.getPurchase(ctx, r.params.id)),
+  "purchases.create": actAs<PoData>()(purchases.savePO, (r) => ({ id: null, data: body<PoData>(r) })),
+  "purchases.update": actAs<PoData & { id: string }>()(purchases.savePO, (r) => ({ id: r.params.id, data: body<PoData>(r) })),
+  "purchases.receive": act(purchases.receivePO),
+  "purchases.return": act(purchases.returnPO),
+  "purchases.cancel": act(purchases.cancelPO),
+  "purchases.attach": act(purchases.attachFiles),
+  "purchases.detach": act(purchases.detachFile),
+  "purchaseBills.create": act(purchases.savePurchaseBill),
 
   /* ---------- settings, team, audit, import ---------- */
-  get("/settings", "Business, receipt, scanner and e-invoice settings (owner).", (ctx) => Q.settings(ctx)),
-  act("PUT", "/settings/business", "Update business details.", settingsA.updateBusiness),
-  act("PUT", "/settings/receipt", "Update receipt and scanner settings.", settingsA.updateReceipt),
-  act("PUT", "/settings/einvoice", "Save GST e-invoice API settings.", einvoice.saveEinvoice),
-  act("POST", "/settings/einvoice/test", "Test the e-invoice connection.", einvoice.testEinvoice, () => ({})),
-  get("/members", "Team members and pending invitations.", (ctx) => Q.members(ctx)),
-  act("POST", "/members/invitations", "Invite by email ({ email, role }).", authA.inviteMemberAction),
-  act("DELETE", "/members/invitations/:id", "Cancel an invitation.", authA.cancelInvitationAction, (r) => ({ invitationId: r.params.id })),
-  act("PUT", "/members/:id/role", "Change a member's role ({ role }).", authA.updateMemberRoleAction, withId("memberId")),
-  act("DELETE", "/members/:id", "Remove a member.", authA.removeMemberAction, (r) => ({ memberId: r.params.id })),
-  get("/audit", "Audit log (?entity, ?q, ?page).", (ctx, r) => Q.auditLog(ctx, r.query)),
-  act("POST", "/imports/preview", "Preview an Excel/CSV import (multipart: kind, file).", imports.previewImport as AnyAction, form),
-  act("POST", "/imports", "Run an Excel/CSV import (multipart: kind, file).", imports.runImport as AnyAction, form),
-];
+  "settings.get": get((ctx) => Q.settings(ctx)),
+  "settings.updateBusiness": act(settingsA.updateBusiness),
+  "settings.updateReceipt": act(settingsA.updateReceipt),
+  "settings.updateEinvoice": act(einvoice.saveEinvoice),
+  "settings.testEinvoice": act(einvoice.testEinvoice, () => ({})),
+  "members.list": get((ctx) => Q.members(ctx)),
+  "members.invite": act(authA.inviteMemberAction),
+  "members.cancelInvitation": act(authA.cancelInvitationAction),
+  "members.updateRole": act(authA.updateMemberRoleAction),
+  "members.remove": act(authA.removeMemberAction),
+  audit: get((ctx, r) => Q.auditLog(ctx, r.query)),
+  "imports.preview": actAs<MultipartImport>()(imports.previewImport, (r) => r.form ?? new FormData()),
+  "imports.run": actAs<MultipartImport>()(imports.runImport, (r) => r.form ?? new FormData()),
+} satisfies { [K in RouteName]: Handler };
 
-/** Matches "/sales/:id/refund" against a request path. */
+export type Route = RouteSpec & { name: RouteName } & Handler;
+
+export const ROUTES: Route[] = (Object.keys(API_ROUTES) as RouteName[]).map((name) => ({ ...(API_ROUTES[name] as RouteSpec), name, ...(HANDLERS[name] as Handler) }));
+
+/** Matches "/sales/:saleId/refund" against a request path. */
 export function match(method: string, path: string): { route: Route; params: Record<string, string> } | null {
   const parts = path.split("/").filter(Boolean);
   for (const route of ROUTES) {
@@ -178,7 +220,35 @@ export function match(method: string, path: string): { route: Route; params: Rec
     const pattern = route.path.split("/").filter(Boolean);
     if (pattern.length !== parts.length) continue;
     const params: Record<string, string> = {};
-    if (pattern.every((seg, i) => (seg.startsWith(":") ? ((params[seg.slice(1)] = decodeURIComponent(parts[i])), true) : seg === parts[i]))) return { route, params };
+    let ok = true;
+    for (let i = 0; i < pattern.length && ok; i++) {
+      const seg = pattern[i];
+      if (!seg.startsWith(":")) ok = seg === parts[i];
+      else {
+        try {
+          params[seg.slice(1)] = decodeURIComponent(parts[i]);
+        } catch {
+          ok = false;
+        }
+      }
+    }
+    if (ok) return { route, params };
   }
   return null;
 }
+
+/* ---------------- types for clients ---------------- */
+
+type Spec<K extends RouteName> = (typeof API_ROUTES)[K];
+type QueryKeys<S> = S extends { query: readonly (infer Q extends string)[] } ? Q : never;
+type QueryInput<K extends RouteName> = { [P in PathParams<Spec<K>["path"]>]: string } & { [P in QueryKeys<Spec<K>>]?: string };
+
+/** For every route: what a client sends (path fields + body/query, flat) and the `data` it gets back (as parsed JSON). */
+export type ApiTypes = {
+  [K in RouteName]: (typeof HANDLERS)[K] extends ActionHandler<infer I, infer O>
+    ? { input: I; output: Spec<K> extends { public: true } ? (Json<O> extends object ? Json<O> : Record<never, never>) & { token?: string } : Json<O> }
+    : (typeof HANDLERS)[K] extends QueryHandler<infer O>
+      ? { input: QueryInput<K>; output: Json<O> }
+      : never;
+};
+

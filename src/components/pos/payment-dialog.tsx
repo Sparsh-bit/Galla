@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { Banknote, CreditCard, Landmark, Plus, Smartphone, X } from "lucide-react";
 import { fromMinor, toMinor } from "@/lib/money";
+import { checkTenders, quickCash } from "@/lib/pos-cart";
 import { useOrg } from "@/components/app/org-context";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -27,17 +28,6 @@ const METHODS: { id: Method; label: string; icon: typeof Banknote }[] = [
   { id: "credit", label: "On account", icon: Landmark },
 ];
 
-function quickCash(total: number) {
-  const notes = [1000, 5000, 10000, 20000, 50000, 100000, 200000];
-  const out = new Set<number>([total]);
-  for (const n of notes) {
-    const v = Math.ceil(total / n) * n;
-    if (v > total) out.add(v);
-    if (out.size >= 5) break;
-  }
-  return [...out];
-}
-
 export function PaymentDialog({
   open, onOpenChange, total, hasCustomer, upiId, orgName, pending, kind, onKindChange, onPay,
 }: {
@@ -57,11 +47,10 @@ export function PaymentDialog({
       return NaN;
     }
   });
-  const paid = parsed.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-  const cash = rows.reduce((a, r, i) => a + (r.method === "cash" && Number.isFinite(parsed[i]) ? parsed[i] : 0), 0);
-  const remaining = Math.max(0, total - paid);
-  const change = Math.max(0, paid - total);
-  const invalid = parsed.some((p) => !Number.isFinite(p) || p < 0) || paid < total || change > cash || (rows.some((r) => r.method === "credit") && !hasCustomer);
+  // Shared with the Android app (lib/pos-cart): enough paid, change only from cash, credit needs a customer.
+  const check = checkTenders(total, rows.map((r, i) => ({ method: r.method, amount: parsed[i] })), hasCustomer);
+  const { cash, remaining, change } = check;
+  const invalid = !!check.problem || (rows.some((r) => r.method === "credit") && !hasCustomer);
   const upiAmount = rows.reduce((a, r, i) => a + (r.method === "upi" ? parsed[i] || 0 : 0), 0);
 
   const upiUrl = useMemo(

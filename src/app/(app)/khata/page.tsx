@@ -1,3 +1,4 @@
+import { reminderText } from "@/lib/khata";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowDownLeft, ArrowUpRight, MessageCircle, NotebookPen } from "lucide-react";
@@ -83,7 +84,7 @@ export default async function KhataPage({ searchParams }: PageProps<"/khata">) {
         <Card className="py-0">
           <ul className="divide-y">
             {rows.map((p) => {
-              const remind = kind === "customer" && p.phone && p.balance > 0 ? waLink(p.phone, `Namaste ${p.name}, this is a reminder from ${ctx.orgName}. Your pending balance is ${money(p.balance)}. Thank you!`, cc) : null;
+              const remind = kind === "customer" && p.phone && p.balance > 0 ? waLink(p.phone, reminderText(p.name, ctx.orgName, money(p.balance)), cc) : null;
               return (
                 <li key={String(p._id)} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                   <Link href={`/${kind}s/${p._id}`} className="min-w-0 flex-1 hover:underline">

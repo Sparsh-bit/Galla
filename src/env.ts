@@ -30,6 +30,11 @@ const schema = z.object({
   // The first provider-portal admin, created on first sign-in at /provider/sign-in. Set on the server only.
   PROVIDER_ADMIN_EMAIL: z.email().optional(),
   PROVIDER_ADMIN_PASSWORD: z.string().min(10).optional(),
+  // Shown on /privacy and /account-deletion as the contact for privacy requests.
+  SUPPORT_EMAIL: z.email().optional(),
+  // Oldest app version allowed to call the API; older apps are told to update (HTTP 426).
+  MIN_ANDROID_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  MIN_IOS_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
   // Desktop apps older than this must update before use (e.g. "0.2.0"); unset = any version works.
   MIN_DESKTOP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
 }).refine((e) => !(e.NODE_ENV === "production" && e.RESEND_API_KEY && /@localhost\b/.test(e.MAIL_FROM)), {

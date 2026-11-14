@@ -53,3 +53,6 @@ export function can(role: Role, p: Permission): boolean {
 export function isRole(r: unknown): r is Role {
   return typeof r === "string" && (ROLES as readonly string[]).includes(r);
 }
+
+/** Largest discount (percent of the bill) staff without "price:override" may give. Enforced by the server. */
+export const CASHIER_MAX_DISCOUNT_PCT = 10;
