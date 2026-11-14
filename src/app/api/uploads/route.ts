@@ -8,7 +8,7 @@ import { loadCtx, allowed } from "@/server/context";
 import { csrfOk } from "@/server/http";
 import { RateLimit } from "@/server/models";
 
-const MAX_IMAGE = 10 * 1024 * 1024; // phone cameras make 4–10 MB photos; the apps shrink them first, this is the safety net
+const MAX_IMAGE = 15 * 1024 * 1024; // phone cameras make 4–15 MB photos; they are shrunk below, so this only bounds the upload
 const MAX_DOC = 10 * 1024 * 1024;
 const MAX_MULTIPART = MAX_DOC + 64 * 1024;
 
@@ -53,9 +53,25 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
   const max = doc ? MAX_DOC : MAX_IMAGE;
   if (file.size > max) return NextResponse.json({ error: `File must be ${max / 1024 / 1024} MB or smaller` }, { status: 413 });
-  const buf = Buffer.from(await file.arrayBuffer());
-  const ext = sniff(buf);
+  let buf: Buffer = Buffer.from(await file.arrayBuffer());
+  let ext = sniff(buf);
   if (!ext || (!doc && ext === "pdf")) return NextResponse.json({ error: doc ? "Only photos (PNG, JPG, WebP) or PDF files are allowed" : "Only PNG, JPG or WebP images are allowed" }, { status: 415 });
+  // Product photos and logos are resized here so every app (web, Android, desktop) sends whatever its camera
+  // makes. Straightened by the photo's rotation tag; `crop=square` centres a square (the in-app camera frame).
+  if (!doc) {
+    try {
+      const { default: sharp } = await import("sharp"); // a missing native build must not break uploads
+      let img = sharp(buf, { limitInputPixels: 120_000_000 }).rotate();
+      img = form?.get("crop") === "square" ? img.resize(1200, 1200, { fit: "cover", position: "centre" }) : img.resize(1600, 1600, { fit: "inside", withoutEnlargement: true });
+      const keep = ext === "png" ? "png" : ext === "webp" ? "webp" : "jpg";
+      buf = await (keep === "png" ? img.png({ compressionLevel: 9 }) : keep === "webp" ? img.webp({ quality: 82 }) : img.jpeg({ quality: 82, mozjpeg: true })).toBuffer();
+      ext = keep;
+    } catch (e) {
+      // Could not be decoded: only fine if it is already small (a corrupt or huge file is refused).
+      console.warn("[uploads] image not resized", e);
+      if (buf.length > 2 * 1024 * 1024) return NextResponse.json({ error: "That picture could not be read. Try another photo." }, { status: 415 });
+    }
+  }
   const name = `${randomBytes(16).toString("hex")}.${ext}`;
   const dir = doc
     ? path.resolve(env.UPLOAD_DIR, "docs", ctx.orgId)
