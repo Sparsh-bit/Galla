@@ -205,6 +205,7 @@ const HANDLERS = {
   "members.updateRole": act(authA.updateMemberRoleAction),
   "members.remove": act(authA.removeMemberAction),
   audit: get((ctx, r) => Q.auditLog(ctx, r.query)),
+  "inventory.reorder": get((ctx) => Q.reorderList(ctx)),
   "imports.preview": actAs<MultipartImport>()(imports.previewImport, (r) => r.form ?? new FormData()),
   "ai.menu": actAs<{ file: Blob }>()(ai.readMenuFile, (r) => r.form ?? new FormData()),
   "ai.addProducts": act(ai.addMenuProducts),

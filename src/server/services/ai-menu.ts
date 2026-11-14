@@ -1,5 +1,6 @@
 import "server-only";
 import sharp from "sharp";
+import { extractText, getDocumentProxy } from "unpdf";
 import { env } from "@/env";
 import { AI_MAX_BYTES, AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
 import { UNITS } from "@/lib/units";
@@ -50,10 +51,77 @@ type Block = { type: "image"; source: { type: "base64"; media_type: string; data
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const rupees = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 1e8 ? String(Math.round(v * 100) / 100) : "");
 
-/** Reads a menu photo or PDF with Claude and returns draft product rows to review (nothing is saved here). */
+export const aiMenuEnabled = () => !!(env.GROQ_API_KEY || env.ANTHROPIC_API_KEY);
+
+const RAW_ITEM = (it: Record<string, unknown>): AiRow | null => {
+  const name = text(it.name, 200);
+  if (!name) return null;
+  const unit = typeof it.unit === "string" && UNIT_CODES.includes(it.unit) ? it.unit : "pcs";
+  return { name, variant: text(it.variant, 120), category: text(it.category, 80), unit, price: rupees(it.price), cost: rupees(it.cost), tax_rate: rupees(it.tax_percent) };
+};
+
+const JSON_SHAPE = `Answer with JSON only, exactly in this shape (no other text):
+{"items":[{"name":"","variant":"","category":"","unit":"pcs","price":null,"cost":null,"tax_percent":null}],"note":""}
+"unit" must be one of: ${UNIT_CODES.join(", ")}. "price", "cost" and "tax_percent" are numbers or null. "note" is one short sentence about anything unclear, or "".`;
+
+/** Groq (OpenAI-compatible): a vision model reads photos; PDFs are read as text, then structured by a text model. */
+async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[]; note: string }> {
+  let content: unknown;
+  let model = env.GROQ_MODEL;
+  if (mime === "application/pdf") {
+    if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new AppError("INVALID", "That file is not a valid PDF.");
+    let pdfText = "";
+    try {
+      const pdf = await getDocumentProxy(new Uint8Array(bytes));
+      pdfText = (await extractText(pdf, { mergePages: true })).text.trim();
+    } catch {
+      throw new AppError("INVALID", "That PDF could not be read. Try a photo of the menu instead.");
+    }
+    if (pdfText.length < 20) throw new AppError("INVALID", "This PDF is a scanned picture with no text. Take a photo of the menu instead and use that.");
+    model = env.GROQ_TEXT_MODEL;
+    content = `${PROMPT}\n\n${JSON_SHAPE}\n\nDocument text:\n"""\n${pdfText.slice(0, 60_000)}\n"""`;
+  } else {
+    let jpeg: Buffer;
+    try {
+      jpeg = await sharp(bytes, { limitInputPixels: 120_000_000 }).rotate().resize(1800, 1800, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+    } catch {
+      throw new AppError("INVALID", "That picture could not be read. Try another photo.");
+    }
+    content = [{ type: "text", text: `${PROMPT}\n\n${JSON_SHAPE}` }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${jpeg.toString("base64")}` } }];
+  }
+  let res: Response;
+  try {
+    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({ model, temperature: 0, max_tokens: 8000, response_format: { type: "json_object" }, messages: [{ role: "user", content }] }),
+      signal: AbortSignal.timeout(120_000),
+    });
+  } catch {
+    throw new AppError("INVALID", "The AI reader could not be reached. Check the internet and try again.");
+  }
+  if (!res.ok) {
+    console.error("[ai-menu] Groq returned", res.status, (await res.text().catch(() => "")).slice(0, 300));
+    throw new AppError("INVALID", res.status === 429 ? "The AI reader is busy. Try again in a minute." : "The AI reader could not read that file. Try a clearer photo or a smaller PDF.");
+  }
+  const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  let parsed: { items?: unknown[]; note?: unknown } = {};
+  try {
+    parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+  } catch {
+    throw new AppError("INVALID", "The AI reader gave an unreadable answer. Please try again.");
+  }
+  const rows = (Array.isArray(parsed.items) ? parsed.items.slice(0, AI_MAX_ROWS) : []).map((it) => RAW_ITEM(it as Record<string, unknown>)).filter((r): r is AiRow => !!r);
+  return { rows, note: text(parsed.note, 300) };
+}
+
+/** Reads a menu photo or PDF and returns draft product rows to review (nothing is saved here). */
 export async function readMenu(bytes: Buffer, mime: string): Promise<{ rows: AiRow[]; note: string }> {
-  if (!env.ANTHROPIC_API_KEY) throw new AppError("INVALID", "Adding products from a photo or PDF is not switched on for this server yet. Ask Concilio Solutions to enable it.");
+  if (!aiMenuEnabled()) throw new AppError("INVALID", "Adding products from a photo or PDF is not switched on for this server yet. Ask Concilio Solutions to enable it.");
   if (bytes.length > AI_MAX_BYTES) throw new AppError("INVALID", "That file is too large. Use a file under 12 MB.");
+  if (env.GROQ_API_KEY) return readWithGroq(bytes, mime);
+  const anthropicKey = env.ANTHROPIC_API_KEY;
+  if (!anthropicKey) throw new AppError("INVALID", "The AI reader is not set up.");
 
   let block: Block;
   if (mime === "application/pdf") {
@@ -74,7 +142,7 @@ export async function readMenu(bytes: Buffer, mime: string): Promise<{ rows: AiR
   try {
     res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      headers: { "x-api-key": anthropicKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 16000,

@@ -3,13 +3,15 @@ import sharp from "sharp";
 
 afterEach(() => {
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.GROQ_API_KEY;
   vi.unstubAllGlobals();
   vi.resetModules();
 });
 
-async function load(key: string | null) {
+async function load(key: string | null, groq: string | null = null) {
   Object.assign(process.env, { MONGODB_URI: "mongodb://localhost/x", BETTER_AUTH_SECRET: "x".repeat(40), APP_URL: "http://localhost:3000" });
   if (key) process.env.ANTHROPIC_API_KEY = key;
+  if (groq) process.env.GROQ_API_KEY = groq;
   return import("@/server/services/ai-menu");
 }
 const png = () => sharp({ create: { width: 40, height: 40, channels: 3, background: "#fff" } }).png().toBuffer();
@@ -56,5 +58,31 @@ describe("AI menu reader", () => {
     const { readMenu } = await load("sk-ant-test");
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 429, text: async () => "secret detail" })));
     await expect(readMenu(await png(), "image/png")).rejects.toThrow(/busy/);
+  });
+
+  it("uses Groq when its key is set: photos go to the vision model, nothing is trusted blindly", async () => {
+    const { readMenu } = await load(null, "gsk_test");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ choices: [{ message: { content: JSON.stringify({ items: [{ name: "Veg Burger", variant: "", category: "Snacks", unit: "pcs", price: 89, cost: null, tax_percent: null }, { name: "<b>x</b>", unit: "weird", price: -5 }], note: "" }) } }] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rows } = await readMenu(await png(), "image/png");
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string>; body: string }];
+    expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
+    expect(init.headers.authorization).toBe("Bearer gsk_test");
+    const body = JSON.parse(init.body);
+    expect(body.model).toMatch(/llama-4/);
+    expect(body.messages[0].content[1].type).toBe("image_url");
+    expect(rows[0]).toEqual({ name: "Veg Burger", variant: "", category: "Snacks", unit: "pcs", price: "89", cost: "", tax_rate: "" });
+    expect(rows[1].price).toBe(""); // a negative price is dropped for the owner to fill in
+    expect(rows[1].unit).toBe("pcs");
+  });
+
+  it("reads a text PDF with the Groq text model and explains a scanned PDF", async () => {
+    const { readMenu } = await load(null, "gsk_test");
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: "{\"items\":[],\"note\":\"\"}" } }] }) })));
+    await expect(readMenu(Buffer.from("%PDF-1.4 garbage"), "application/pdf")).rejects.toThrow(/could not be read|scanned/);
   });
 });

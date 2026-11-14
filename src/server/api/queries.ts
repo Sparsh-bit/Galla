@@ -9,7 +9,7 @@ import { getReceiptData } from "../services/receipt";
 import { getEinvoiceSettings } from "../services/einvoice";
 import { partyStatement } from "../services/ledger";
 import {
-  balances, expiringBatches, gstSummary, lowStock, parseRange, purchaseTotals, salesByCashier, salesByCategory, salesByDay, salesByPayment, salesByProduct, salesTotals, startOfDay, stockValuation,
+  balances, expiringBatches, gstSummary, lowStock, parseRange, reorderList as reorderGroups, purchaseTotals, salesByCashier, salesByCategory, salesByDay, salesByPayment, salesByProduct, salesTotals, startOfDay, stockValuation,
 } from "../services/reports";
 import { stockByVariant } from "../services/stock";
 
@@ -182,6 +182,13 @@ export async function listStock(ctx: Ctx, q: Query) {
     })),
   }));
   return { ...paged(items, total, p), lowStockCount: (await lowStock(ctx, 2000)).length };
+}
+
+/** Low-stock items grouped by supplier, with suggested order quantities. */
+export async function reorderList(ctx: Ctx) {
+  need(ctx, "stock:read");
+  const s = await getOrgSettings(ctx.orgId);
+  return { shop: s.receipt?.shopName?.trim() || ctx.orgName, groups: await reorderGroups(ctx) };
 }
 
 export async function listMoves(ctx: Ctx, q: Query) {

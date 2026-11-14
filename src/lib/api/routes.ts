@@ -154,6 +154,7 @@ export const API_ROUTES = {
   "members.updateRole": { method: "PUT", path: "/members/:memberId/role", summary: "Change a member's role ({ role })." },
   "members.remove": { method: "DELETE", path: "/members/:memberId", summary: "Remove a member." },
   audit: { method: "GET", path: "/audit", summary: "Audit log (?entity, ?q, ?page).", query: ["entity", "q", ...PAGE] },
+  "inventory.reorder": { method: "GET", path: "/inventory/reorder", summary: "Low-stock items grouped by supplier with suggested order quantities." },
   "imports.preview": { method: "POST", path: "/imports/preview", summary: "Preview an Excel/CSV import (multipart: kind, file).", multipart: true },
   "ai.menu": { method: "POST", path: "/ai/menu", summary: "Read a menu / price list from a photo or PDF into draft product rows (multipart: file). Nothing is saved.", multipart: true },
   "ai.addProducts": { method: "POST", path: "/ai/menu/products", summary: "Save reviewed menu rows as products." },

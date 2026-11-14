@@ -36,6 +36,7 @@ export const NAV: { label: string; items: NavItem[] }[] = [
           { title: "Adjust stock", href: "/inventory/adjust", permission: "stock:write" },
           { title: "Transfer", href: "/inventory/transfer", permission: "stock:write", feature: "multishop" },
           { title: "Stock count", href: "/inventory/count", permission: "stock:write" },
+          { title: "Reorder list", href: "/inventory/reorder", permission: "stock:read" },
           { title: "Serial numbers", href: "/inventory/serials", feature: "serials" },
           { title: "Movement history", href: "/inventory/history" },
         ],

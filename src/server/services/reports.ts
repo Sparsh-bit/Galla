@@ -1,7 +1,8 @@
 import "server-only";
 import type { PipelineStage } from "mongoose";
 import type { Ctx } from "../context";
-import { Batch, LedgerEntry, Party, Product, Sale, StockLevel, Types } from "../models";
+import { suggestQty, type ReorderGroup } from "@/lib/reorder";
+import { Batch, LedgerEntry, Party, Product, PurchaseOrder, Sale, StockLevel, Types } from "../models";
 
 /** Midnight of `date` in `tz`, as a UTC instant. */
 export function startOfDay(tz: string, date = new Date()): Date {
@@ -167,6 +168,45 @@ export async function lowStock(ctx: Ctx, limit = 100) {
     { $sort: { qty: 1 } },
     { $limit: limit },
   ]);
+}
+
+/**
+ * Low-stock items grouped by the supplier they were last bought from (so one WhatsApp message per
+ * supplier). Items never purchased through Galla go in a "No supplier yet" group.
+ */
+export async function reorderList(ctx: Ctx): Promise<ReorderGroup[]> {
+  const low = await lowStock(ctx, 2000);
+  if (!low.length) return [];
+  const ids = low.map((l) => l.variantId);
+  const pos = await PurchaseOrder.find({ orgId: ctx.orgId, status: { $ne: "cancelled" }, "lines.variantId": { $in: ids } }, { supplierId: 1, supplierName: 1, lines: 1, createdAt: 1 }).sort({ createdAt: -1 }).lean();
+  const last = new Map<string, { supplierId: string; supplierName: string; cost: number }>();
+  for (const po of pos) {
+    for (const l of po.lines) {
+      const k = String(l.variantId);
+      if (!last.has(k)) last.set(k, { supplierId: String(po.supplierId), supplierName: po.supplierName ?? "", cost: l.unitCost });
+    }
+  }
+  const phones = new Map((await Party.find({ orgId: ctx.orgId, _id: { $in: [...new Set([...last.values()].map((v) => v.supplierId))] } }, { name: 1, phone: 1 }).lean()).map((p) => [String(p._id), { name: p.name, phone: p.phone ?? "" }]));
+  const groups = new Map<string, ReorderGroup>();
+  for (const l of low) {
+    const scale = l.scale || 1;
+    const inStock = l.qty / scale;
+    const sup = last.get(String(l.variantId));
+    const key = sup?.supplierId ?? "none";
+    if (!groups.has(key)) {
+      const p = sup ? phones.get(sup.supplierId) : undefined;
+      groups.set(key, { supplierId: sup?.supplierId ?? null, supplierName: p?.name ?? sup?.supplierName ?? "No supplier yet", phone: p?.phone ?? "", items: [] });
+    }
+    groups.get(key)!.items.push({
+      variantId: String(l.variantId),
+      name: [l.name, l.variantName].filter(Boolean).join(" - "),
+      unit: l.unit || "pcs",
+      inStock: +inStock.toFixed(3),
+      suggest: suggestQty(l.reorderLevel, inStock),
+      lastCost: sup?.cost ?? null,
+    });
+  }
+  return [...groups.values()].sort((a, b) => (a.supplierId === null ? 1 : 0) - (b.supplierId === null ? 1 : 0) || a.supplierName.localeCompare(b.supplierName));
 }
 
 export async function expiringBatches(ctx: Ctx, withinDays: number) {

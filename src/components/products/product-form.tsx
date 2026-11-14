@@ -361,7 +361,7 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
               <FormField label="Unit">
                 <SelectField value={unitCode} onValueChange={setUnitCode} options={UNITS.filter((u) => !trackSerial || u.scale === 1).map((u) => [u.code, u.label] as const)} disabled={isEdit} />
               </FormField>
-              <FormField label="Low stock alert at" description="Shows on the dashboard when stock falls to this level.">
+              <FormField label="Low stock alert at" description="Shows on the dashboard and in the Reorder list when stock falls to this level.">
                 <Input inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value.replace(/\D/g, ""))} placeholder="0" />
               </FormField>
               <div className="flex items-center justify-between gap-3">

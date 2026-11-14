@@ -32,6 +32,10 @@ const schema = z.object({
   // created by Concilio Solutions in the provider portal).
   // Reads menus and price lists from photos/PDFs (Anthropic API). Optional: without it the AI import says it is switched off.
   ANTHROPIC_API_KEY: z.string().startsWith("sk-ant-").optional(),
+  // Groq is used first when set (vision model for photos, text model for PDFs). Models can be changed without a release.
+  GROQ_API_KEY: z.string().startsWith("gsk_").optional(),
+  GROQ_MODEL: z.string().max(100).default("meta-llama/llama-4-scout-17b-16e-instruct"),
+  GROQ_TEXT_MODEL: z.string().max(100).default("llama-3.3-70b-versatile"),
   // The public demo site: no sign-in; visitors send an enquiry and get a private 24-hour sample shop.
   DEMO_MODE: z.enum(["true", "false"]).default("false"),
   ALLOW_PUBLIC_SIGNUP: z.enum(["true", "false"]).default("false"),
