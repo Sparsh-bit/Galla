@@ -543,6 +543,7 @@ const subscriptionSchema = new Schema(
     priceMonthly: { type: Number, default: 0, min: 0 }, // paise
     features: { type: [String], default: undefined }, // undefined = every module (businesses made before plans)
     maxStaff: { type: Number, default: 0, min: 0 }, // 0 = unlimited
+    demo: { type: Boolean, default: false }, // throwaway sample shop made from the demo enquiry form
     paidUntil: { type: Date, default: null }, // null = no expiry
     status: { type: String, enum: ["active", "locked"], default: "active" },
     lockReason: { type: String, default: "", maxlength: 300 },
@@ -572,3 +573,20 @@ export type ProductDoc = InferSchemaType<typeof productSchema> & { _id: Types.Ob
 export type VariantDoc = InferSchemaType<typeof variantSchema> & { _id: Types.ObjectId };
 export type SaleDoc = InferSchemaType<typeof saleSchema> & { _id: Types.ObjectId; createdAt: Date };
 export type OrgSettingsDoc = InferSchemaType<typeof orgSettingsSchema> & { _id: Types.ObjectId };
+
+// People who asked to see Galla (demo site enquiry form). Not tied to a business.
+const enquirySchema = new Schema(
+  {
+    name: { type: String, required: true, maxlength: 100 },
+    phone: { type: String, default: "", maxlength: 30 },
+    email: { type: String, default: "", maxlength: 200 },
+    business: { type: String, default: "", maxlength: 120 },
+    city: { type: String, default: "", maxlength: 80 },
+    message: { type: String, default: "", maxlength: 1000 },
+    ip: { type: String, default: "", maxlength: 60 },
+    demoOrgId: { type: ObjectId, default: null },
+  },
+  opts,
+);
+enquirySchema.index({ createdAt: -1 });
+export const Enquiry = model("Enquiry", enquirySchema, false);

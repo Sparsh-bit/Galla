@@ -35,17 +35,18 @@ const FEATURES = [
 const COUNTERS = ["Kirana & supermarket", "Pharmacy", "Mobile & electronics", "Hardware", "Garments & footwear", "Distributors", "Cosmetics & stationery", "Bakery", "Multi-branch shops"];
 
 /** Sends visitors to the Concilio Solutions booking page (Galla is invitation-only). */
-function RequestAccess({ href, className }: { href: string; className: string }) {
+function RequestAccess({ href, className, demo }: { href: string; className: string; demo?: boolean }) {
   return (
     <Button asChild size="lg" className={className}>
-      <a href={href} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a>
+      {demo ? <Link href={href}>Try the demo <ArrowRight className="ml-1 size-4" /></Link> : <a href={href} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a>}
     </Button>
   );
 }
 
 export default async function HomePage() {
   if (await auth.api.getSession({ headers: await headers() })) redirect("/dashboard");
-  const access = env.REQUEST_ACCESS_URL ?? DEFAULT_REQUEST_ACCESS_URL;
+  const demo = env.DEMO_MODE === "true";
+  const access = demo ? "/demo" : (env.REQUEST_ACCESS_URL ?? DEFAULT_REQUEST_ACCESS_URL);
 
   return (
     <div className="landing-page min-h-dvh overflow-hidden bg-background text-foreground">
@@ -60,8 +61,8 @@ export default async function HomePage() {
             <a href="#download" className="transition-colors hover:text-foreground">Download</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="sm"><Link href="/sign-in">Sign in</Link></Button>
-            <Button asChild size="sm" className="rounded-full px-4 font-semibold"><a href={access} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a></Button>
+            {!demo && <Button asChild variant="ghost" size="sm"><Link href="/sign-in">Sign in</Link></Button>}
+            <Button asChild size="sm" className="rounded-full px-4 font-semibold">{demo ? <Link href={access}>Try the demo <ArrowRight className="ml-1 size-4" /></Link> : <a href={access} target="_blank" rel="noopener noreferrer">Request access <ArrowRight className="ml-1 size-4" /></a>}</Button>
           </div>
         </div>
       </header>
@@ -82,7 +83,7 @@ export default async function HomePage() {
                 Galla runs the whole counter: selling, stock, credit and tax, on the devices your shop already owns. One app instead of four habits.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <RequestAccess href={access} className="h-12 rounded-full px-6 text-sm font-semibold shadow-lg shadow-emerald-700/25" />
+                <RequestAccess demo={demo} href={access} className="h-12 rounded-full px-6 text-sm font-semibold shadow-lg shadow-emerald-700/25" />
                 <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white/70 px-6"><a href="#download"><Download className="mr-1 size-4" /> Download for Mac & Windows</a></Button>
                 <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-5"><Link href="/sign-in">Try the web demo</Link></Button>
               </div>
@@ -171,7 +172,7 @@ export default async function HomePage() {
                 <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-emerald-400">Offline billing</p>
                 <h2 className="mt-4 text-balance text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl">Internet gone? <span className="font-[Georgia,serif] font-medium italic text-emerald-400">Billing isn’t.</span></h2>
                 <p className="mt-4 max-w-md text-sm leading-6 text-white/80 sm:text-base">Most cloud tools freeze when the signal drops. Galla keeps selling and syncs the moment you are back.</p>
-                <RequestAccess href={access} className="mt-8 h-12 rounded-full px-6 font-semibold" />
+                <RequestAccess demo={demo} href={access} className="mt-8 h-12 rounded-full px-6 font-semibold" />
               </div>
               <ol className="space-y-3">
                 {[["Register the till", "Open the POS once online: products, stock, serials and customers download."], ["Signal drops", "The POS opens from cache and finds everything locally."], ["Bills keep their number", "Each till has its own GST-compliant series."], ["Back online", "Auto-sync. Conflicts are flagged for review, never lost."]].map(([t, d], i) => (
@@ -215,7 +216,7 @@ export default async function HomePage() {
             <Logo className="text-4xl justify-center" />
             <p className="mt-6 font-[Georgia,serif] text-2xl italic text-[#032048] sm:text-3xl">Har dukaan ka <span className="serif-accent not-italic">digital galla.</span></p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <RequestAccess href={access} className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-emerald-700/25" />
+              <RequestAccess demo={demo} href={access} className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-emerald-700/25" />
               <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><a href="#download">Download the apps</a></Button>
             </div>
             <ContactCta requestAccessUrl={access} />

@@ -9,6 +9,7 @@ import { auth } from "../auth";
 import { AppError, type Ctx } from "../context";
 import { connectDb } from "../db";
 import { ProviderAdmin, ProviderAudit, Subscription, Types } from "../models";
+import { Enquiry } from "../models";
 import { initializeBusiness, slugify } from "./onboarding";
 import { ALL_FEATURES, effectiveFeatures } from "@/lib/features";
 import { lockReason } from "./subscription";
@@ -42,7 +43,7 @@ async function hashPassword(pw: string) {
 }
 
 /** Creates a verified email+password login (no business). Throws CONFLICT if the email is taken. */
-async function createLogin(email: string, name: string, password: string) {
+export async function createLogin(email: string, name: string, password: string) {
   const c = await auth.$context;
   if (await c.internalAdapter.findUserByEmail(email)) throw new AppError("CONFLICT", "An account with this email already exists.");
   const user = await c.internalAdapter.createUser({ email, name, emailVerified: true }, { method: "admin" });
@@ -86,6 +87,7 @@ export async function listSellers(q = "") {
       { $lookup: { from: "user", let: { owner: { $first: { $filter: { input: "$m", cond: { $eq: ["$$this.role", "owner"] } } } } }, pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$owner.userId"] } } }, { $project: { email: 1, name: 1 } }], as: "owner" } },
       { $lookup: { from: "subscriptions", localField: "_id", foreignField: "orgId", as: "sub" } },
       { $project: { name: 1, createdAt: 1, members: { $size: "$m" }, owner: { $first: "$owner" }, sub: { $first: "$sub" } } },
+      { $match: { "sub.demo": { $ne: true } } },
       { $sort: { createdAt: -1 } },
       { $limit: 2000 }, // ponytail: one page of 2000 businesses; add paging when you pass that
     ]).toArray(),
@@ -103,7 +105,7 @@ export async function listSellers(q = "") {
       const s = saleBy.get(String(o._id));
       return {
         id: String(o._id), name: o.name, createdAt: o.createdAt, ownerEmail: o.owner?.email ?? "", ownerName: o.owner?.name ?? "", members: o.members,
-        plan: o.sub?.plan ?? "Standard", modules: effectiveFeatures(o.sub?.features).length, priceMonthly: o.sub?.priceMonthly ?? 0, paidUntil: o.sub?.paidUntil ?? null, state: lockReason(o.sub) ?? "active",
+        plan: o.sub?.plan ?? "Standard", modules: effectiveFeatures(o.sub?.features).length, priceMonthly: o.sub?.priceMonthly ?? 0, paidUntil: o.sub?.paidUntil ?? null, expiresSoon: !!o.sub?.paidUntil && new Date(o.sub.paidUntil).getTime() - Date.now() < 7 * 86400e3, state: lockReason(o.sub) ?? "active",
         products: prodBy.get(String(o._id)) ?? 0, bills30: s?.bills ?? 0, revenue30: s?.revenue ?? 0, lastSaleAt: s?.last ?? null,
       };
     });
@@ -181,7 +183,7 @@ async function orgName(orgId: string) {
   return String(o.name);
 }
 
-async function memberUserIds(orgId: string) {
+export async function memberUserIds(orgId: string) {
   return (await (await db()).collection("member").find({ organizationId: new Types.ObjectId(orgId) }, { projection: { userId: 1 } }).toArray()).map((m) => m.userId as Types.ObjectId);
 }
 
@@ -233,7 +235,7 @@ export async function resetOwnerPassword(p: ProviderUser, orgId: string, passwor
   await audit(p, "seller.reset_password", { id: orgId, name });
 }
 
-async function removeUser(userId: string | Types.ObjectId) {
+export async function removeUser(userId: string | Types.ObjectId) {
   const d = await db();
   const id = typeof userId === "string" ? new Types.ObjectId(userId) : userId;
   if (await ProviderAdmin.exists({ userId: String(id) })) return;
@@ -242,7 +244,7 @@ async function removeUser(userId: string | Types.ObjectId) {
 }
 
 /** Deletes every record of the business: stock, sales, khata, files, members, invitations, subscription. */
-async function wipeOrg(orgId: string) {
+export async function wipeOrg(orgId: string) {
   const d = await db();
   const _id = new Types.ObjectId(orgId);
   await Promise.all(Object.values(mongoose.models).filter((m) => m.schema.path("orgId")).map((m) => m.deleteMany({ orgId: _id })));
@@ -263,4 +265,21 @@ export async function deleteSeller(p: ProviderUser, orgId: string, confirmName: 
   await wipeOrg(orgId);
   for (const u of users) if (!(await d.collection("member").findOne({ userId: u }))) await removeUser(u);
   await audit(p, "seller.delete", { id: orgId, name }, `${users.length} user(s)`);
+}
+
+export async function recentEnquiries(limit = 30) {
+  await connectDb();
+  return Enquiry.find({}).sort({ createdAt: -1 }).limit(limit).lean();
+}
+
+/** Removes demo shops (and their throwaway logins) whose 24 hours are over. A few per call keeps it cheap. */
+export async function purgeExpiredDemos(max = 5) {
+  await connectDb();
+  const old = await Subscription.find({ demo: true, paidUntil: { $lt: new Date(Date.now() - 3600_000) } }, { orgId: 1 }).limit(max).lean();
+  for (const s of old) {
+    const orgId = String(s.orgId);
+    const users = await memberUserIds(orgId).catch(() => []);
+    await wipeOrg(orgId).catch((e) => console.error("[demo] purge failed", orgId, e));
+    await Promise.all(users.map((u) => removeUser(u).catch(() => undefined)));
+  }
 }

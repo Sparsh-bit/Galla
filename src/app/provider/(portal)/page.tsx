@@ -7,7 +7,7 @@ import { NewSeller } from "@/components/provider/new-seller";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listSellers, recentAudit } from "@/server/services/provider";
+import { listSellers, recentAudit, recentEnquiries } from "@/server/services/provider";
 
 const money = (p: number) => formatMoney(p, "INR", "en-IN");
 const date = (d: Date | string | null) => (d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
@@ -20,7 +20,7 @@ const STATE: Record<string, { label: string; variant: "default" | "secondary" | 
 export default async function ProviderHome({ searchParams }: PageProps<"/provider">) {
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
-  const [rows, log] = await Promise.all([listSellers(q), recentAudit(12)]);
+  const [rows, log, leads] = await Promise.all([listSellers(q), recentAudit(12), recentEnquiries(15)]);
   const active = rows.filter((r) => r.state === "active");
   const tiles = [
     { label: "Sellers", value: String(rows.length), icon: Building2 },
@@ -56,7 +56,7 @@ export default async function ProviderHome({ searchParams }: PageProps<"/provide
                 <TableCell><div>{r.ownerName}</div><div className="text-xs text-muted-foreground">{r.ownerEmail}</div></TableCell>
                 <TableCell>{r.plan}<div className="text-xs text-muted-foreground">{r.modules}/{ALL_FEATURES.length} modules · {money(r.priceMonthly)}/month</div></TableCell>
                 <TableCell><Badge variant={STATE[r.state].variant}>{STATE[r.state].label}</Badge></TableCell>
-                <TableCell className={r.state === "active" && r.paidUntil && new Date(r.paidUntil).getTime() - Date.now() < 7 * 86400e3 ? "font-semibold text-amber-700" : undefined}>{date(r.paidUntil)}</TableCell>
+                <TableCell className={r.state === "active" && r.expiresSoon ? "font-semibold text-amber-700" : undefined}>{date(r.paidUntil)}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.bills30}</TableCell>
                 <TableCell className="text-right tabular-nums">{money(r.revenue30)}</TableCell>
                 <TableCell>{date(r.lastSaleAt)}</TableCell>
@@ -65,6 +65,24 @@ export default async function ProviderHome({ searchParams }: PageProps<"/provide
           </TableBody>
         </Table>
       </Card>
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-muted-foreground">Demo enquiries (call these people)</h2>
+        <Card className="py-0">
+          <ul className="divide-y text-sm">
+            {leads.length === 0 && <li className="p-4 text-muted-foreground">No enquiries yet.</li>}
+            {leads.map((l) => (
+              <li key={String(l._id)} className="flex flex-wrap gap-x-3 gap-y-0.5 p-3">
+                <span className="font-medium">{l.name}</span>
+                <a className="underline" href={`tel:${l.phone}`}>{l.phone}</a>
+                {l.email && <a className="underline" href={`mailto:${l.email}`}>{l.email}</a>}
+                <span>{l.business}{l.city ? `, ${l.city}` : ""}</span>
+                {l.message && <span className="text-muted-foreground">{l.message}</span>}
+                <span className="ml-auto font-mono text-xs text-muted-foreground">{new Date(l.createdAt as unknown as string).toLocaleString("en-IN")}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-muted-foreground">Recent provider activity</h2>
         <Card className="py-0">

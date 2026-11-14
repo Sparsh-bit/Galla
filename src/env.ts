@@ -30,6 +30,8 @@ const schema = z.object({
   REQUEST_ACCESS_URL: z.url().optional(),
   // Anyone may sign up ("true"), or only people with a pending team invitation (default: accounts are
   // created by Concilio Solutions in the provider portal).
+  // The public demo site: no sign-in; visitors send an enquiry and get a private 24-hour sample shop.
+  DEMO_MODE: z.enum(["true", "false"]).default("false"),
   ALLOW_PUBLIC_SIGNUP: z.enum(["true", "false"]).default("false"),
   // The first provider-portal admin, created on first sign-in at /provider/sign-in. Set on the server only.
   PROVIDER_ADMIN_EMAIL: z.email().optional(),

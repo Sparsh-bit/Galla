@@ -37,6 +37,11 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         <AppSidebar orgs={ctx.orgs ?? []} userEmail={ctx.userEmail} />
         <SidebarInset className="min-w-0">
           <ConnectionBanner />
+          {ctx.plan === "Demo" && (
+            <div role="status" className="border-b bg-amber-50 px-4 py-2 text-center text-xs text-amber-900">
+              You are in the Galla demo: sample data that resets in 24 hours. <a className="font-semibold underline" href="mailto:team@concilio.solutions?subject=Galla%20for%20my%20shop">Talk to us about your real shop</a>
+            </div>
+          )}
           <header data-app-header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/70 sm:px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mx-1 data-[orientation=vertical]:h-5" />

@@ -214,7 +214,7 @@ export function ContactCta({ requestAccessUrl }: { requestAccessUrl: string }) {
           <span className="min-w-0"><span className="block text-xs text-muted-foreground">{c.label}</span><span className="block truncate text-sm font-semibold text-[#032048]">{c.value}</span></span>
         </a>
       ))}
-      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Every enquiry gets a human reply within {CONTACT.replyWithin}. <a className="underline" href={requestAccessUrl} target="_blank" rel="noopener noreferrer">Book a free demo <ArrowRight className="inline size-3" /></a></p>
+      <p className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-4">Every enquiry gets a human reply within {CONTACT.replyWithin}. <a className="underline" href={requestAccessUrl} {...(requestAccessUrl.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>Book a free demo <ArrowRight className="inline size-3" /></a></p>
     </div>
   );
 }

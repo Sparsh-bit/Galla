@@ -21,6 +21,7 @@ export const E2E_ENV = {
   BETTER_AUTH_SECRET: secret,
   APP_URL: `http://localhost:${PORT}`,
   MAIL_SINK: "file",
+  DEMO_MODE: process.env.E2E_DEMO ? "true" : "false", // the demo site has no login, so only one spec runs this way
   ALLOW_PUBLIC_SIGNUP: "true", // tests create their own owners; production keeps sign-up invite-only
   PROVIDER_ADMIN_EMAIL: "provider@galla.test",
   PROVIDER_ADMIN_PASSWORD: "Local-Provider-Pass-2026!",

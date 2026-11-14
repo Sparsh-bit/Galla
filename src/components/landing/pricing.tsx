@@ -29,7 +29,7 @@ export function Pricing({ requestAccessUrl }: { requestAccessUrl: string }) {
               ))}
             </ul>
             <Button asChild size="lg" variant={p.popular ? "default" : "outline"} className="mt-8 h-11 rounded-full font-semibold">
-              <a href={requestAccessUrl} target="_blank" rel="noopener noreferrer">Request access</a>
+              <a href={requestAccessUrl} {...(requestAccessUrl.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>{requestAccessUrl.startsWith("http") ? "Request access" : "Try the demo"}</a>
             </Button>
           </article>
         ))}

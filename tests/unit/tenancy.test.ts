@@ -9,7 +9,7 @@ const { default: mongoose } = await import("mongoose");
 await import("@/server/models");
 
 // Collections that are deliberately NOT per-business (provider-side data and login throttling).
-const GLOBAL = new Set(["Subscription", "ProviderAdmin", "ProviderAudit", "LoginAttempt", "RateLimit"]);
+const GLOBAL = new Set(["Subscription", "ProviderAdmin", "ProviderAudit", "LoginAttempt", "RateLimit", "Enquiry"]);
 
 const all = Object.entries(mongoose.models);
 
