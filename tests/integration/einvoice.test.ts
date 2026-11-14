@@ -1,3 +1,4 @@
+import { ALL_FEATURES } from "@/lib/features";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
@@ -33,7 +34,7 @@ afterAll(async () => {
 
 describe("GST e-invoice via the NIC API", () => {
   it("generates an IRN, rejects duplicates, creates an e-way bill and cancels", async () => {
-    const ctx: Ctx = { userId: "u", userName: "Owner", userEmail: "o@x.test", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Sharma Traders", role: "owner" };
+    const ctx: Ctx = { userId: "u", userName: "Owner", userEmail: "o@x.test", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Sharma Traders", role: "owner", features: ALL_FEATURES, plan: "Business", maxStaff: 0 };
     // getOrgSettings is cached per request in the app; tests call services directly.
     await onboarding.initializeBusiness(ctx, { name: "Sharma Traders", businessType: "Retail store", currency: "INR", locale: "en-IN", timezone: "Asia/Kolkata", taxMode: "GST", taxId: "27AAPFU0939F1ZV", stateCode: "27", locationName: "Main", sample: false });
     await models.OrgSettings.updateOne({ orgId: ctx.orgId }, { $set: { legalName: "Sharma Traders Pvt Ltd", address: { line1: "12 MG Road", city: "Pune", postalCode: "411001" } } });
@@ -83,7 +84,7 @@ describe("GST e-invoice via the NIC API", () => {
   });
 
   it("records validation problems instead of sending bad invoices", async () => {
-    const ctx: Ctx = { userId: "u", userName: "Owner", userEmail: "o@x.test", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "No Address Co", role: "owner" };
+    const ctx: Ctx = { userId: "u", userName: "Owner", userEmail: "o@x.test", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "No Address Co", role: "owner", features: ALL_FEATURES, plan: "Business", maxStaff: 0 };
     await onboarding.initializeBusiness(ctx, { name: "No Address Co", businessType: "Retail store", currency: "INR", locale: "en-IN", timezone: "Asia/Kolkata", taxMode: "GST", taxId: "27AAPFU0939F1ZV", stateCode: "27", locationName: "Main", sample: false });
     await einv.saveEinvoiceSettings(ctx, { enabled: true, environment: "sandbox", baseUrl: nic.url, paths: { auth: "/eivital/v1.04/auth", invoice: "/eicore/v1.03/Invoice", cancel: "/eicore/v1.03/Invoice/Cancel", ewb: "/eiewb/v1.03/ewaybill" }, ...MOCK_CREDENTIALS, publicKey: nic.publicKey });
     const loc = String((await models.Location.findOne({ orgId: ctx.orgId }).lean())!._id);

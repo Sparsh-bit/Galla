@@ -4,8 +4,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { env } from "@/env";
 import { readLimitedForm } from "@/lib/limited-form-data";
-import { can } from "@/lib/permissions";
-import { loadCtx } from "@/server/context";
+import { loadCtx, allowed } from "@/server/context";
 import { csrfOk } from "@/server/http";
 import { RateLimit } from "@/server/models";
 
@@ -35,8 +34,8 @@ export async function POST(req: Request) {
   }
   const ctx = await loadCtx();
   if (!ctx) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
-  const canUploadImage = can(ctx.role, "products:write") || can(ctx.role, "settings:manage");
-  const canUploadDoc = can(ctx.role, "purchases:write");
+  const canUploadImage = allowed(ctx, "products:write") || allowed(ctx, "settings:manage");
+  const canUploadDoc = allowed(ctx, "purchases:write");
   if (!canUploadImage && !canUploadDoc) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   const rate = await RateLimit.findOneAndUpdate(
     { key: `upload:${ctx.orgId}:${ctx.userId}` },
@@ -48,8 +47,8 @@ export async function POST(req: Request) {
   const form = await readLimitedForm(req, MAX_MULTIPART, () => { tooLarge = true; }).catch(() => null);
   if (tooLarge) return NextResponse.json({ error: "Upload is too large" }, { status: 413 });
   const doc = form?.get("kind") === "doc";
-  const allowed = doc ? canUploadDoc : canUploadImage;
-  if (!allowed) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
+  const permitted = doc ? canUploadDoc : canUploadImage;
+  if (!permitted) return NextResponse.json({ error: "Not allowed" }, { status: 403 });
   const file = form?.get("file");
   if (!(file instanceof File)) return NextResponse.json({ error: "No file" }, { status: 400 });
   const max = doc ? MAX_DOC : MAX_IMAGE;

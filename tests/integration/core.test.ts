@@ -1,3 +1,4 @@
+import { ALL_FEATURES } from "@/lib/features";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import mongoose from "mongoose";
@@ -18,7 +19,7 @@ let svc: {
 };
 
 const ctx = (role: Ctx["role"] = "owner"): Ctx => ({
-  userId: "u-" + role, userName: "Tester", userEmail: "t@example.com", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Org", role,
+  userId: "u-" + role, userName: "Tester", userEmail: "t@example.com", orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Org", role, features: ALL_FEATURES, plan: "Business", maxStaff: 0,
 });
 
 async function business(c: Ctx) {

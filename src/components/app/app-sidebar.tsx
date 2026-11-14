@@ -104,7 +104,7 @@ export function AppSidebar({ orgs, userEmail }: { orgs: { id: string; name: stri
                     </SidebarMenuButton>
                     {item.children && (pathname === item.href || pathname.startsWith(item.href + "/")) && (
                       <SidebarMenuSub>
-                        {item.children.filter((c) => !c.permission || org.can(c.permission)).map((c) => (
+                        {item.children.filter((c) => (!c.permission || org.can(c.permission)) && (!c.feature || org.has(c.feature))).map((c) => (
                           <SidebarMenuSubItem key={c.href}>
                             <SidebarMenuSubButton asChild isActive={pathname === c.href}>
                               <Link href={c.href} onClick={close}>

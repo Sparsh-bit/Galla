@@ -2,6 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
+import { ALL_FEATURES } from "@/lib/features";
 import { auth } from "../auth";
 import { createSeller, deleteSeller, ensureProviderAdmin, isProviderAdmin, loadProvider, recordPayment, resetOwnerPassword, setLocked, updateSubscription, type ProviderUser } from "../services/provider";
 import { toSafeError, type ActionResult } from "../with-auth";
@@ -58,6 +59,8 @@ export const createSellerAction = withProvider(
     stateCode: z.string().regex(/^(\d{2})?$/).default(""),
     taxId: z.string().trim().toUpperCase().regex(/^(\d{2}[A-Z0-9]{13})?$/, "GSTIN must be 15 characters").default(""),
     plan: z.string().trim().min(1).max(60).default("Standard"),
+    features: z.array(z.enum(ALL_FEATURES as [string, ...string[]])).max(20).default([]),
+    maxStaff: z.number().int().min(0).max(1000).default(0),
     priceMonthly: z.number().int().min(0).max(1e10).default(0),
     paidUntil: day.nullable().default(null),
   }).strict(),
@@ -65,7 +68,8 @@ export const createSellerAction = withProvider(
 );
 
 export const updateSubscriptionAction = withProvider(
-  z.object({ orgId: objectId, plan: z.string().trim().min(1).max(60), priceMonthly: z.number().int().min(0).max(1e10), paidUntil: day.nullable(), notes: z.string().trim().max(2000).default("") }).strict(),
+  z.object({ orgId: objectId, plan: z.string().trim().min(1).max(60), features: z.array(z.enum(ALL_FEATURES as [string, ...string[]])).max(20).default([]),
+  maxStaff: z.number().int().min(0).max(1000).default(0), priceMonthly: z.number().int().min(0).max(1e10), paidUntil: day.nullable(), notes: z.string().trim().max(2000).default("") }).strict(),
   (p, { orgId, ...i }) => updateSubscription(p, orgId, i),
 );
 

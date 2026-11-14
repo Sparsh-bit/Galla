@@ -2,8 +2,8 @@ import ExcelJS from "exceljs";
 import { EXPORT_REPORTS } from "@/lib/exports";
 import { escapeCell, toCsv } from "@/lib/csv";
 import { formatQty } from "@/lib/format";
-import { can, type Permission } from "@/lib/permissions";
-import { getOrgSettings, loadCtx } from "@/server/context";
+import { type Permission } from "@/lib/permissions";
+import { getOrgSettings, loadCtx, allowed } from "@/server/context";
 import { Party, Product, Sale, StockMove } from "@/server/models";
 import { gstSummary, parseRange, stockValuation } from "@/server/services/reports";
 import { audit } from "@/server/services/system";
@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: RouteContext<"/api/export/[r
   if (!def) return new Response("Not found", { status: 404 });
   const ctx = await loadCtx();
   if (!ctx) return new Response("Unauthorized", { status: 401 });
-  if (!can(ctx.role, def.permission)) return new Response("Forbidden", { status: 403 });
+  if (!allowed(ctx, def.permission)) return new Response("Forbidden", { status: 403 });
   const url = new URL(req.url);
   const s = await getOrgSettings(ctx.orgId);
   const range = parseRange(s.timezone, url.searchParams.get("from") ?? undefined, url.searchParams.get("to") ?? undefined);
@@ -55,7 +55,7 @@ export async function GET(req: Request, { params }: RouteContext<"/api/export/[r
     const products = await Product.find({ orgId: ctx.orgId }).sort({ name: 1 }).lean();
     rows = products.flatMap((p) => p.variants.map((v) => ({
       name: p.name, variant: v.name, sku: v.sku, barcode: v.barcodes.join(" "), unit: p.unit?.code, hsn: p.hsn,
-      cost: can(ctx.role, "cost:read") ? major(v.costPrice) : "", price: major(v.salePrice), mrp: major(v.mrp), reorder: p.reorderLevel, active: p.active && v.active ? "yes" : "no",
+      cost: allowed(ctx, "cost:read") ? major(v.costPrice) : "", price: major(v.salePrice), mrp: major(v.mrp), reorder: p.reorderLevel, active: p.active && v.active ? "yes" : "no",
     })));
   } else if (report === "stock") {
     cols = [{ key: "name", label: "Item" }, { key: "sku", label: "SKU" }, { key: "qty", label: "Quantity" }, { key: "unit", label: "Unit" }, { key: "cost", label: "Cost value" }, { key: "sale", label: "Sale value" }];

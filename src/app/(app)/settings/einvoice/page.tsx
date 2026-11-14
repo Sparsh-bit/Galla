@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export const metadata: Metadata = { title: "E-invoice & e-way bill" };
 
 export default async function EinvoiceSettingsPage() {
-  const ctx = await requireCtx("settings:manage");
+  const ctx = await requireCtx("settings:manage", "einvoice");
   const [s, cfg] = await Promise.all([getOrgSettings(ctx.orgId), getEinvoiceSettings(ctx)]);
   return (
     <PageBody className="max-w-3xl">

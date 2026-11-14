@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { History, Tags } from "lucide-react";
 import { formatDate, formatQty } from "@/lib/format";
-import { can, seesCost } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { seesCost } from "@/lib/permissions";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Location, Product, StockLevel, StockMove, type ProductDoc } from "@/server/models";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { ArchiveButton } from "@/components/products/archive-button";
@@ -39,7 +39,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
   const byLocation = new Map<string, number>();
   for (const l of levels) byLocation.set(String(l.locationId), (byLocation.get(String(l.locationId)) ?? 0) + l.qty);
   const variantName = new Map(p.variants.map((v) => [String(v._id), v.name]));
-  const canWrite = can(ctx.role, "products:write");
+  const canWrite = allowed(ctx, "products:write");
 
   const product = {
     id: String(p._id), name: p.name, description: p.description ?? "", categoryId: p.categoryId ? String(p.categoryId) : null, brand: p.brand ?? "",

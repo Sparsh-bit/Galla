@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { can } from "@/lib/permissions";
-import { requireCtx } from "@/server/context";
+import { requireCtx, allowed } from "@/server/context";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { ImportWizard } from "@/components/import/import-wizard";
 
@@ -10,9 +9,9 @@ export default async function ImportPage() {
   const ctx = await requireCtx("import:run");
   const kinds = (
     [
-      ["products", "Products", can(ctx.role, "products:write")],
-      ["customers", "Customers", can(ctx.role, "parties:write")],
-      ["suppliers", "Suppliers", can(ctx.role, "purchases:write")],
+      ["products", "Products", allowed(ctx, "products:write")],
+      ["customers", "Customers", allowed(ctx, "parties:write")],
+      ["suppliers", "Suppliers", allowed(ctx, "purchases:write")],
     ] as const
   ).filter(([, , ok]) => ok).map(([k, l]) => ({ value: k, label: l }));
   return (

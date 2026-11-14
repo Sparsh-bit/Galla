@@ -7,7 +7,7 @@ import { StockEditor } from "@/components/inventory/stock-editor";
 export const metadata: Metadata = { title: "Transfer stock" };
 
 export default async function Page() {
-  const ctx = await requireCtx("stock:write");
+  const ctx = await requireCtx("stock:write", "multishop");
   const locations = await Location.find({ orgId: ctx.orgId, active: true }, { name: 1 }).sort({ isDefault: -1, name: 1 }).lean();
   return (
     <PageBody>

@@ -370,16 +370,16 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="batch" className="flex flex-col items-start gap-0.5 font-normal">
                   Track batches & expiry
-                  <span className="text-xs text-muted-foreground">For medicines, food and cosmetics.</span>
+                  <span className="text-xs text-muted-foreground">{org.has("batches") ? "For medicines, food and cosmetics." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit} />
+                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit || !org.has("batches")} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="serial" className="flex flex-col items-start gap-0.5 font-normal">
                   Track serial numbers / IMEI
-                  <span className="text-xs text-muted-foreground">Phones, electronics, appliances. Each unit is scanned in and out.</span>
+                  <span className="text-xs text-muted-foreground">{org.has("serials") ? "Phones, electronics, appliances. Each unit is scanned in and out." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit} />
+                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit || !org.has("serials")} />
               </div>
               {trackSerial && (
                 <FormField label="Warranty (months)" optional description="Shown on serial lookups so you can check warranty claims.">

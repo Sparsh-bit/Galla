@@ -4,8 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { formatDate, formatQty } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Location, Product, PurchaseOrder } from "@/server/models";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { PoActions } from "@/components/purchases/po-actions";
@@ -30,7 +29,7 @@ export default async function PurchasePage({ params }: PageProps<"/purchases/[id
     Product.find({ orgId: ctx.orgId, _id: { $in: po.lines.map((l) => l.productId) } }, { trackBatch: 1, trackSerial: 1, unit: 1, variants: 1 }).lean(),
   ]);
   const prod = (pid: unknown) => products.find((p) => String(p._id) === String(pid));
-  const canWrite = can(ctx.role, "purchases:write");
+  const canWrite = allowed(ctx, "purchases:write");
   const ordered = po.lines.reduce((a, l) => a + Math.round((l.unitCost * l.qtyOrdered) / (l.scale ?? 1)), 0);
   const net = po.receivedValue - po.returnedValue;
 

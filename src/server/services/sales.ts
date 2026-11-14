@@ -1,10 +1,9 @@
 import "server-only";
 import type { ClientSession } from "mongoose";
 import { z } from "zod";
-import { can } from "@/lib/permissions";
 import { saleInput } from "@/lib/schemas";
 import { computeBill } from "@/lib/tax";
-import { AppError, type Ctx } from "../context";
+import { AppError, type Ctx, allowed } from "../context";
 import { Batch, Location, OrgSettings, Party, Sale, type OrgSettingsDoc, type SaleDoc } from "../models";
 import { inTransaction } from "../with-auth";
 import { getVariantHits, type VariantHit } from "./products";
@@ -32,7 +31,7 @@ interface PricedLine {
 
 async function priceLines(ctx: Ctx, input: Input, session?: ClientSession): Promise<PricedLine[]> {
   const hits = new Map((await getVariantHits(ctx, [...new Set(input.lines.map((l) => l.variantId))], input.locationId)).map((h) => [h.variantId, h]));
-  const override = can(ctx.role, "price:override");
+  const override = allowed(ctx, "price:override");
   const out: PricedLine[] = [];
   for (const l of input.lines) {
     const hit = hits.get(l.variantId);
@@ -108,7 +107,7 @@ export async function completeSale(ctx: Ctx, input: Input) {
     const lines = await priceLines(ctx, input, session);
     const b = bill(settings, lines, input.billDiscount, interState);
 
-    if (!can(ctx.role, "price:override") && b.discountTotal * 100 > b.subtotal * CASHIER_MAX_DISCOUNT_PCT) {
+    if (!allowed(ctx, "price:override") && b.discountTotal * 100 > b.subtotal * CASHIER_MAX_DISCOUNT_PCT) {
       throw new AppError("FORBIDDEN", `Discounts above ${CASHIER_MAX_DISCOUNT_PCT}% need a manager.`);
     }
     if (input.kind === "tax_invoice" && settings.taxMode === "GST" && !customer) throw new AppError("INVALID", "Select a customer for a tax invoice.");

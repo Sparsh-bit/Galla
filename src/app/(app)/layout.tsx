@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { ScanBarcode } from "lucide-react";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { CommandMenu } from "@/components/app/command-menu";
 import { OrgProvider } from "@/components/app/org-context";
@@ -27,7 +26,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
         orgId: ctx.orgId, orgName: ctx.orgName, role: ctx.role, userId: ctx.userId, userName: ctx.userName,
         currency: settings.currency, locale: settings.locale, timezone: settings.timezone, taxMode: settings.taxMode as "GST" | "VAT" | "NONE",
         scanner: { interKeyMs: settings.scanner?.interKeyMs ?? 35, minLength: settings.scanner?.minLength ?? 4 },
-        receiptWidth: (settings.receipt?.paperWidth ?? 80) as 58 | 80,
+        receiptWidth: (settings.receipt?.paperWidth ?? 80) as 58 | 80, features: ctx.features,
       }}
     >
       <RegisterServiceWorker />
@@ -44,8 +43,8 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
             <CommandMenu />
             <div className="ml-auto flex items-center gap-2">
               <LanguagePicker />
-              {can(ctx.role, "products:read") && <PhoneLinkButton compact />}
-              {can(ctx.role, "pos:sell") && (
+              {allowed(ctx, "products:read") && <PhoneLinkButton compact />}
+              {allowed(ctx, "pos:sell") && (
                 <Button asChild size="sm">
                   <Link href="/pos">
                     <ScanBarcode /> <span className="hidden sm:inline">{t("New sale")}</span>

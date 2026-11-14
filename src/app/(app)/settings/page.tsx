@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, ChevronRight, FileCheck2, ClipboardList, MapPin, Percent, Printer, ReceiptText, UserRound, Users } from "lucide-react";
-import { can, type Permission } from "@/lib/permissions";
-import { requireCtx } from "@/server/context";
+import type { Feature } from "@/lib/features";
+import { type Permission } from "@/lib/permissions";
+import { allowed, requireCtx } from "@/server/context";
 import { PageBody, PageHeader } from "@/components/app/page-header";
 import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Settings" };
 
-const ITEMS: { href: string; title: string; text: string; icon: typeof Building2; permission?: Permission }[] = [
+const ITEMS: { href: string; title: string; text: string; icon: typeof Building2; permission?: Permission; feature?: Feature }[] = [
   { href: "/settings/business", title: "Business profile", text: "Name, address, GSTIN, currency, tax mode and logo.", icon: Building2, permission: "settings:manage" },
   { href: "/settings/taxes", title: "Tax rates", text: "GST/VAT slabs and cess used on products.", icon: Percent, permission: "settings:manage" },
   { href: "/settings/locations", title: "Locations", text: "Shops and warehouses that hold stock.", icon: MapPin, permission: "settings:manage" },
-  { href: "/settings/einvoice", title: "E-invoice & e-way bill", text: "Connect to the GST portal to generate IRNs, QR codes and e-way bills.", icon: FileCheck2, permission: "settings:manage" },
+  { href: "/settings/einvoice", title: "E-invoice & e-way bill", text: "Connect to the GST portal to generate IRNs, QR codes and e-way bills.", icon: FileCheck2, permission: "settings:manage", feature: "einvoice" },
   { href: "/settings/receipt", title: "Receipts & numbering", text: "Paper width, header/footer, UPI QR, bill prefixes, scanner speed.", icon: ReceiptText, permission: "settings:manage" },
   { href: "/settings/devices", title: "Printer & scanner (this device)", text: "Connect a thermal printer by USB, Bluetooth, serial or network.", icon: Printer },
   { href: "/settings/members", title: "Team & roles", text: "Invite staff and choose what each person can do.", icon: Users, permission: "members:manage" },
@@ -22,7 +23,7 @@ const ITEMS: { href: string; title: string; text: string; icon: typeof Building2
 
 export default async function SettingsPage() {
   const ctx = await requireCtx();
-  const items = ITEMS.filter((i) => !i.permission || can(ctx.role, i.permission));
+  const items = ITEMS.filter((i) => (!i.permission || allowed(ctx, i.permission)) && (!i.feature || ctx.features.includes(i.feature)));
   return (
     <PageBody className="max-w-4xl">
       <PageHeader title="Settings" description={`Manage ${ctx.orgName}.`} />

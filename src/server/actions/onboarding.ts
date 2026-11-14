@@ -1,4 +1,5 @@
 "use server";
+import { ALL_FEATURES } from "@/lib/features";
 import { headers } from "next/headers";
 import mongoose from "mongoose";
 import { z } from "zod";
@@ -43,7 +44,7 @@ export async function createBusiness(input: z.input<typeof schema>): Promise<Act
     orgId = org.id;
     await auth.api.setActiveOrganization({ headers: h, body: { organizationId: org.id } });
     await initializeBusiness(
-      { userId: session.user.id, userName: session.user.name, userEmail: session.user.email, orgId: org.id, orgName: org.name, role: "owner" },
+      { userId: session.user.id, userName: session.user.name, userEmail: session.user.email, orgId: org.id, orgName: org.name, role: "owner", features: ALL_FEATURES, plan: "Business", maxStaff: 0 },
       parsed.data,
     );
     return { ok: true, data: { orgId: org.id } };

@@ -2,6 +2,7 @@ import {
   BarChart3, Boxes, ClipboardList, Factory, LayoutDashboard, NotebookPen, Package, Receipt, ScanBarcode, Settings, Truck, Upload, Users,
   type LucideIcon,
 } from "lucide-react";
+import type { Feature } from "@/lib/features";
 import type { Permission } from "@/lib/permissions";
 
 export interface NavItem {
@@ -10,7 +11,7 @@ export interface NavItem {
   icon: LucideIcon;
   permission?: Permission;
   keywords?: string;
-  children?: { title: string; href: string; permission?: Permission }[];
+  children?: { title: string; href: string; permission?: Permission; feature?: Feature }[];
 }
 
 export const NAV: { label: string; items: NavItem[] }[] = [
@@ -33,9 +34,9 @@ export const NAV: { label: string; items: NavItem[] }[] = [
         children: [
           { title: "Stock levels", href: "/inventory" },
           { title: "Adjust stock", href: "/inventory/adjust", permission: "stock:write" },
-          { title: "Transfer", href: "/inventory/transfer", permission: "stock:write" },
+          { title: "Transfer", href: "/inventory/transfer", permission: "stock:write", feature: "multishop" },
           { title: "Stock count", href: "/inventory/count", permission: "stock:write" },
-          { title: "Serial numbers", href: "/inventory/serials" },
+          { title: "Serial numbers", href: "/inventory/serials", feature: "serials" },
           { title: "Movement history", href: "/inventory/history" },
         ],
       },

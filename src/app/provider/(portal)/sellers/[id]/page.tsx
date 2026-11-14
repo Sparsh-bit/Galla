@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
+import { FEATURES } from "@/lib/features";
 import { formatMoney } from "@/lib/money";
 import { AccessControls, PaymentForm, SubscriptionForm } from "@/components/provider/seller-controls";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,11 @@ export default async function SellerPage({ params }: PageProps<"/provider/seller
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-3xl font-extrabold tracking-tight">{s.name}</h1>
         <Badge variant={sub.state === "active" ? "secondary" : "destructive"}>{sub.state === "active" ? "Active" : sub.state === "locked" ? "Locked" : "Expired"}</Badge>
-        <span className="text-sm text-muted-foreground">Since {date(s.createdAt)} · paid until {date(sub.paidUntil)}</span>
+        <span className="text-sm text-muted-foreground">Since {date(s.createdAt)} · paid until {date(sub.paidUntil)} · {sub.plan} plan</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5" aria-label="Modules switched on">
+        {sub.features.length === 0 && <Badge variant="outline">Core only</Badge>}
+        {sub.features.map((f) => <Badge key={f} variant="secondary">{FEATURES[f].label}</Badge>)}
       </div>
       <div className="grid gap-3 sm:grid-cols-4">
         {Object.entries(s.counts).map(([k, v]) => (
@@ -43,7 +48,7 @@ export default async function SellerPage({ params }: PageProps<"/provider/seller
           </TableBody>
         </Table>
       </Card>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="space-y-4">
         <SubscriptionForm orgId={s.id} sub={{ ...sub, paidUntil: sub.paidUntil ? new Date(sub.paidUntil).toISOString() : null }} />
         <PaymentForm orgId={s.id} />
       </div>

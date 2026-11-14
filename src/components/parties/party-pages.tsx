@@ -6,8 +6,7 @@ import { formatDate, formatQty, pageOf } from "@/lib/format";
 import { countryCodeFor, waLink } from "@/lib/whatsapp";
 import { formatMoney } from "@/lib/money";
 import { purchaseLineValue } from "@/lib/purchase";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Party, PurchaseOrder, Sale } from "@/server/models";
 import { partyStatement } from "@/server/services/ledger";
 import { Pagination, SearchInput } from "@/components/app/list-controls";
@@ -39,7 +38,7 @@ export async function PartyListPage({ kind, searchParams }: { kind: "customer" |
   }
   if (searchParams.due === "1") filter.balance = { $gt: 0 };
   const [rows, total] = await Promise.all([Party.find(filter).sort({ name: 1 }).skip((page - 1) * PAGE).limit(PAGE).lean(), Party.countDocuments(filter)]);
-  const canWrite = kind === "customer" ? can(ctx.role, "parties:write") : can(ctx.role, "purchases:write");
+  const canWrite = kind === "customer" ? allowed(ctx, "parties:write") : allowed(ctx, "purchases:write");
   const title = kind === "customer" ? "Customers" : "Suppliers";
   const Icon = kind === "customer" ? Users : Factory;
 
@@ -115,7 +114,7 @@ export async function PartyDetailPage({ kind, id }: { kind: "customer" | "suppli
   if (!p) notFound();
   const s = await getOrgSettings(ctx.orgId);
   const money = (m: number) => formatMoney(m, s.currency, s.locale);
-  const canWrite = kind === "customer" ? can(ctx.role, "parties:write") : can(ctx.role, "purchases:write");
+  const canWrite = kind === "customer" ? allowed(ctx, "parties:write") : allowed(ctx, "purchases:write");
   const [docs, statement, stats] = await Promise.all([
     kind === "customer"
       ? Sale.find({ orgId: ctx.orgId, customerId: p._id, status: { $in: ["completed", "void"] } }, { number: 1, kind: 1, status: 1, grandTotal: 1, balanceDue: 1, completedAt: 1 }).sort({ completedAt: -1 }).limit(50).lean()
@@ -132,7 +131,7 @@ export async function PartyDetailPage({ kind, id }: { kind: "customer" | "suppli
       ? waLink(p.phone, reminderText(p.name, ctx.orgName, money(p.balance)), cc)
       : null;
   const labels = KIND_LABELS[kind];
-  const canUndo = canWrite && can(ctx.role, "ledger:reverse");
+  const canUndo = canWrite && allowed(ctx, "ledger:reverse");
 
   return (
     <PageBody className="max-w-5xl">

@@ -3,10 +3,9 @@ import { offlineLicenseUntil } from "./subscription";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { fiscalYear, parseOfflineNumber } from "@/lib/numbering";
-import { can } from "@/lib/permissions";
 import { objectId } from "@/lib/schemas";
 import { computeBill } from "@/lib/tax";
-import { AppError, getOrgSettings, type Ctx } from "../context";
+import { AppError, getOrgSettings, type Ctx, allowed } from "../context";
 import { Subscription, Batch, Device, Location, OrgSettings, Party, Sale, SerialNumber, type OrgSettingsDoc } from "../models";
 import { inTransaction } from "../with-auth";
 import { catalogSnapshot, getVariantHits } from "./products";
@@ -118,7 +117,7 @@ export async function syncOfflineSale(ctx: Ctx, deviceCode: string, deviceId: st
       for (const l of input.lines) {
         const hit = hits.get(l.variantId);
         if (!hit) throw new AppError("INVALID", "A product on this bill no longer exists.");
-        if (l.unitPrice !== hit.salePrice && !can(ctx.role, "price:override")) issues.push({ code: "price_changed", message: `${hit.name}: sold at ${l.unitPrice / 100}, current price ${hit.salePrice / 100}` });
+        if (l.unitPrice !== hit.salePrice && !allowed(ctx, "price:override")) issues.push({ code: "price_changed", message: `${hit.name}: sold at ${l.unitPrice / 100}, current price ${hit.salePrice / 100}` });
         if (!hit.trackBatch) {
           priced.push({ hit, qty: l.qty, unitPrice: l.unitPrice, discount: l.discount, batchId: null, unitCost: hit.costPrice, serials: l.serials });
           continue;
@@ -142,7 +141,7 @@ export async function syncOfflineSale(ctx: Ctx, deviceCode: string, deviceId: st
         lines: priced.map((p) => ({ unitPrice: p.unitPrice, qty: p.qty, scale: p.hit.scale, discount: p.discount, rateBp: p.hit.rateBp, cessBp: p.hit.cessBp, inclusive: p.hit.inclusive })),
         billDiscount: input.billDiscount, mode: settings.taxMode as "GST", interState, roundOff: settings.roundOff,
       });
-      if (!can(ctx.role, "price:override") && bill.discountTotal * 100 > bill.subtotal * CASHIER_MAX_DISCOUNT_PCT) {
+      if (!allowed(ctx, "price:override") && bill.discountTotal * 100 > bill.subtotal * CASHIER_MAX_DISCOUNT_PCT) {
         issues.push({ code: "discount_exceeded", message: `Discount of ${bill.discountTotal / 100} is above the ${CASHIER_MAX_DISCOUNT_PCT}% a cashier may give` });
       }
       if (bill.grandTotal !== input.grandTotal) issues.push({ code: "total_changed", message: `Printed total ${input.grandTotal / 100}, recalculated ${bill.grandTotal / 100} (tax or price data changed while offline)` });

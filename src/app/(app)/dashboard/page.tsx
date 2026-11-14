@@ -18,8 +18,7 @@ import {
 } from "lucide-react";
 import { formatQty, formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Sale } from "@/server/models";
 import { balances, expiringBatches, lowStock, salesByDay, salesByProduct, salesTotals, startOfDay } from "@/server/services/reports";
 import { PageBody } from "@/components/app/page-header";
@@ -41,7 +40,7 @@ export default async function DashboardPage() {
   const tomorrow = new Date(today.getTime() + 86400e3);
   const monthAgo = new Date(today.getTime() - 29 * 86400e3);
   const yesterday = new Date(today.getTime() - 86400e3);
-  const showMoney = can(ctx.role, "reports:read");
+  const showMoney = allowed(ctx, "reports:read");
   const todayLabel = new Intl.DateTimeFormat(s.locale, { weekday: "long", day: "numeric", month: "long", timeZone: tz }).format(new Date());
 
   const [t, y, series, top, low, expiring, receivables, recent] = await Promise.all([
@@ -76,7 +75,7 @@ export default async function DashboardPage() {
           <p className="max-w-xl text-sm text-muted-foreground sm:text-base">{tr("Here’s the latest from {name}.", { name: ctx.orgName })}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {can(ctx.role, "products:write") && (
+          {allowed(ctx, "products:write") && (
             <Button asChild size="lg" variant="outline" className="rounded-xl bg-card">
               <Link href="/products/new"><Plus /> {tr("Add product")}</Link>
             </Button>

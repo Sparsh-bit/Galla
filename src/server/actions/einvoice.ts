@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { objectId } from "@/lib/schemas";
 import { cancelIrn, generateEwb, generateIrn, portalJson, saveEinvoiceSettings, testConnection } from "../services/einvoice";
+import { needFeature } from "../context";
 import { withAuth } from "../with-auth";
 
 const path = z.string().trim().regex(/^\/[A-Za-z0-9/._-]{1,120}$/, "Must start with / and contain only URL path characters");
@@ -21,6 +22,7 @@ export const saveEinvoice = withAuth(
     publicKey: z.string().trim().max(5000).refine((k) => !k || /-----BEGIN (RSA )?PUBLIC KEY-----/.test(k), "Paste the full public key including the BEGIN/END lines").optional(),
   }).strict(),
   async (ctx, input) => {
+    needFeature(ctx, "einvoice", "GST e-invoice");
     await saveEinvoiceSettings(ctx, input);
     revalidatePath("/settings/einvoice");
     return null;
@@ -28,11 +30,13 @@ export const saveEinvoice = withAuth(
 );
 
 export const testEinvoice = withAuth("settings:manage", z.object({}).strict(), async (ctx) => {
+  needFeature(ctx, "einvoice", "GST e-invoice");
   await testConnection(ctx);
   return null;
 });
 
 export const createIrn = withAuth("sales:void", z.object({ saleId: objectId }).strict(), async (ctx, { saleId }) => {
+  needFeature(ctx, "einvoice", "GST e-invoice");
   try {
     return await generateIrn(ctx, saleId);
   } finally {
@@ -41,6 +45,7 @@ export const createIrn = withAuth("sales:void", z.object({ saleId: objectId }).s
 });
 
 export const voidIrn = withAuth("sales:void", z.object({ saleId: objectId, reason: z.enum(["1", "2", "3", "4"]), remark: z.string().trim().max(100) }).strict(), async (ctx, i) => {
+  needFeature(ctx, "einvoice", "GST e-invoice");
   await cancelIrn(ctx, i.saleId, i.reason, i.remark);
   revalidatePath(`/sales/${i.saleId}`);
   return null;

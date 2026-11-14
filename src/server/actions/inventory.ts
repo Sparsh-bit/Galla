@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { objectId } from "@/lib/schemas";
-import { AppError } from "../context";
+import { AppError, needFeature } from "../context";
 import { Location } from "../models";
 import { adjustStock, batchesFor, postStockCount, transferStock } from "../services/inventory";
 import { audit } from "../services/system";
@@ -24,6 +24,7 @@ export const transfer = withAuth(
   "stock:write",
   z.object({ fromId: objectId, toId: objectId, note: z.string().trim().max(200).default(""), lines: z.array(z.object({ variantId: objectId, batchId: objectId.nullable(), qty: z.number().int().min(1).max(1e9), serials: z.array(z.string().trim().min(1).max(64)).max(2000).optional() }).strict()).min(1).max(500) }).strict(),
   async (ctx, input) => {
+    needFeature(ctx, "multishop", "Stock transfer between shops");
     await transferStock(ctx, input);
     revalidatePath("/inventory");
     return null;
@@ -45,6 +46,10 @@ export const variantBatches = withAuth("stock:read", z.object({ variantId: objec
 const locationInput = z.object({ id: objectId.nullable(), name: z.string().trim().min(1).max(80), kind: z.enum(["store", "warehouse"]), isDefault: z.boolean(), active: z.boolean() }).strict();
 
 export const saveLocation = withAuth("settings:manage", locationInput, async (ctx, i) => {
+  if (!i.id) {
+    const n = await Location.countDocuments({ orgId: ctx.orgId, active: true });
+    if (n >= 1 && !ctx.features.includes("multishop")) needFeature(ctx, "multishop", "More than one shop");
+  }
   if (i.isDefault && !i.active) throw new AppError("INVALID", "The default location must be active.");
   if (i.isDefault) await Location.updateMany({ orgId: ctx.orgId }, { $set: { isDefault: false } });
   if (i.id) {

@@ -21,7 +21,7 @@ const STATUS: Record<string, { label: string; variant: "default" | "secondary" |
 };
 
 export default async function SerialsPage({ searchParams }: PageProps<"/inventory/serials">) {
-  const ctx = await requireCtx("stock:read");
+  const ctx = await requireCtx("stock:read", "serials");
   const sp = await searchParams;
   const s = await getOrgSettings(ctx.orgId);
   const page = pageOf(sp.page);

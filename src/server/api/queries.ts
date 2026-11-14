@@ -2,7 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import { can, seesCost } from "@/lib/permissions";
 import { auth } from "../auth";
-import { AppError, getOrgSettings, type Ctx } from "../context";
+import { allowed, AppError, getOrgSettings, type Ctx } from "../context";
 import { connectDb } from "../db";
 import { AuditLog, Category, EinvoiceConfig, Location, Party, Product, PurchaseOrder, Sale, SerialNumber, StockLevel, StockMove, TaxRate, Types, type ProductDoc, type SaleDoc } from "../models";
 import { getReceiptData } from "../services/receipt";
@@ -24,7 +24,7 @@ const rx = (s: string) => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "
 const isId = (s: string | undefined): s is string => !!s && /^[a-f0-9]{24}$/i.test(s);
 const paged = <T>(items: T[], total: number, p: number) => ({ items, total, page: p, pageSize: PAGE, pages: Math.max(1, Math.ceil(total / PAGE)) });
 function need(ctx: Ctx, perm: Parameters<typeof can>[1]) {
-  if (!can(ctx.role, perm)) throw new AppError("FORBIDDEN", "You don't have permission to do that.");
+  if (!allowed(ctx, perm)) throw new AppError("FORBIDDEN", "You don't have permission to do that.");
 }
 
 function stripCost(ctx: Ctx, p: ProductDoc) {
@@ -48,7 +48,7 @@ export async function me(ctx: Ctx) {
   return {
     user: { id: ctx.userId, name: ctx.userName, email: ctx.userEmail, twoFactorEnabled: !!(session?.user as { twoFactorEnabled?: boolean } | undefined)?.twoFactorEnabled },
     business: {
-      id: ctx.orgId, name: ctx.orgName, role: ctx.role, currency: s.currency, locale: s.locale, timezone: s.timezone, taxMode: s.taxMode as "GST" | "VAT" | "NONE",
+      id: ctx.orgId, name: ctx.orgName, role: ctx.role, plan: ctx.plan, features: ctx.features as string[], currency: s.currency, locale: s.locale, timezone: s.timezone, taxMode: s.taxMode as "GST" | "VAT" | "NONE",
       // What a till needs to bill exactly like the web POS.
       stateCode: s.stateCode ?? "", roundOff: !!s.roundOff, pricesIncludeTax: !!s.pricesIncludeTax, allowNegativeStock: !!s.allowNegativeStock,
       fiscalYearStartMonth: s.fiscalYearStartMonth, logoUrl: s.logoUrl ?? null,
@@ -67,7 +67,7 @@ export async function dashboard(ctx: Ctx) {
   const tomorrow = new Date(today.getTime() + 86400e3);
   const yesterday = new Date(today.getTime() - 86400e3);
   const monthAgo = new Date(today.getTime() - 29 * 86400e3);
-  const money = can(ctx.role, "reports:read");
+  const money = allowed(ctx, "reports:read");
   const [t, y, series, top, low, expiring, receivables, recent] = await Promise.all([
     salesTotals(ctx, today, tomorrow),
     salesTotals(ctx, yesterday, today),
@@ -266,9 +266,9 @@ export async function saleDetail(ctx: Ctx, saleId: string) {
     syncIssues: (sale.syncIssues ?? []).map((i) => ({ code: i.code ?? "", message: i.message ?? "" })),
     returns: returns.map((r) => ({ id: String(r._id), number: r.number ?? "", total: r.grandTotal ?? 0, at: r.completedAt ?? null })),
     returnOf: original ? { id: String(original._id), number: original.number ?? "" } : null,
-    canReturn: returnable && can(ctx.role, "sales:return"),
-    canVoid: !isReturn && sale.status === "completed" && can(ctx.role, "sales:void"),
-    einvoice: { eligible: einvoiceEligible, enabled: !!einv?.enabled, canManage: can(ctx.role, "sales:void") },
+    canReturn: returnable && allowed(ctx, "sales:return"),
+    canVoid: !isReturn && sale.status === "completed" && allowed(ctx, "sales:void"),
+    einvoice: { eligible: einvoiceEligible, enabled: !!einv?.enabled, canManage: allowed(ctx, "sales:void") },
   };
 }
 
@@ -305,7 +305,7 @@ export async function getParty(ctx: Ctx, kind: "customer" | "supplier", id: stri
 
 export async function khata(ctx: Ctx, q: Query) {
   need(ctx, "parties:read");
-  const canSuppliers = can(ctx.role, "purchases:read");
+  const canSuppliers = allowed(ctx, "purchases:read");
   const kind = q.tab === "suppliers" && canSuppliers ? "supplier" : "customer";
   const p = page(q);
   const filter: Record<string, unknown> = { orgId: ctx.orgId, kind, active: true };

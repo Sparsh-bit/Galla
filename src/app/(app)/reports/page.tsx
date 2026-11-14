@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Download, IndianRupee, Percent, Receipt, RotateCcw, TrendingUp, Wallet } from "lucide-react";
 import { formatDate, formatQty, PAYMENT_LABELS } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import {
   balances, expiringBatches, gstSummary, parseRange, purchaseTotals, salesByCashier, salesByCategory, salesByDay, salesByPayment, salesByProduct, salesTotals, stockValuation,
 } from "@/server/services/reports";
@@ -48,7 +47,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/reports"
 
       {tab === "sales" && <SalesReport ctx={ctx} range={range} money={money} tz={s.timezone} exportHref={exp("sales")} />}
       {tab === "gst" && <GstReport ctx={ctx} range={range} money={money} gst={s.taxMode === "GST"} exportHref={exp("gst")} salesHref={exp("sales")} />}
-      {tab === "stock" && <StockReport ctx={ctx} money={money} showCost={can(ctx.role, "cost:read")} />}
+      {tab === "stock" && <StockReport ctx={ctx} money={money} showCost={allowed(ctx, "cost:read")} />}
       {tab === "expiry" && <ExpiryReport ctx={ctx} tz={s.timezone} locale={s.locale} />}
       {tab === "dues" && <DuesReport ctx={ctx} money={money} />}
     </PageBody>

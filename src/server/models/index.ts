@@ -541,6 +541,8 @@ const subscriptionSchema = new Schema(
     orgId: { type: ObjectId, required: true, unique: true },
     plan: { type: String, default: "Standard", trim: true, maxlength: 60 },
     priceMonthly: { type: Number, default: 0, min: 0 }, // paise
+    features: { type: [String], default: undefined }, // undefined = every module (businesses made before plans)
+    maxStaff: { type: Number, default: 0, min: 0 }, // 0 = unlimited
     paidUntil: { type: Date, default: null }, // null = no expiry
     status: { type: String, enum: ["active", "locked"], default: "active" },
     lockReason: { type: String, default: "", maxlength: 300 },

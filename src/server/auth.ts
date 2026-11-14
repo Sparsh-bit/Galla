@@ -11,7 +11,7 @@ import { MongoClient, ObjectId } from "mongodb";
 import { env } from "@/env";
 import { sendMail } from "./mail";
 import { connectDb } from "./db";
-import { LoginAttempt, ProviderAdmin } from "./models";
+import { LoginAttempt, ProviderAdmin, Subscription } from "./models";
 import { deleteAccountData } from "./services/account";
 import { lockReason } from "./services/subscription";
 
@@ -121,6 +121,8 @@ export const auth = betterAuth({
     organization({
       creatorRole: "owner",
       roles: { owner: ownerAc, manager: memberAc, cashier: memberAc, stockkeeper: memberAc },
+      // Staff cap of the plan (0 or no subscription = unlimited), set by Concilio.
+      membershipLimit: async (_user, org) => (await Subscription.findOne({ orgId: org.id }, { maxStaff: 1 }).lean())?.maxStaff || 1000,
       invitationExpiresIn: 60 * 60 * 24 * 7,
       sendInvitationEmail: async ({ email, organization: org, inviter, id }) => {
         await sendMail(email, `Join ${org.name} on Galla`, `${inviter.user.name} invited you to join ${org.name}.`, { url: `${env.APP_URL}/accept-invite/${id}`, label: "Accept invitation" });

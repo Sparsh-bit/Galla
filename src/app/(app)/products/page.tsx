@@ -3,8 +3,7 @@ import Link from "next/link";
 import { FolderTree, Package, Plus, Tags } from "lucide-react";
 import { formatQty, pageOf } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Category, Product, type ProductDoc } from "@/server/models";
 import { stockByVariant } from "@/server/services/stock";
 import { FilterSelect, Pagination, SearchInput } from "@/components/app/list-controls";
@@ -41,7 +40,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
   ]);
   const stock = await stockByVariant(ctx, products.flatMap((p) => p.variants.map((v) => String(v._id))));
   const catName = new Map(categories.map((c) => [String(c._id), c.name]));
-  const canWrite = can(ctx.role, "products:write");
+  const canWrite = allowed(ctx, "products:write");
 
   return (
     <PageBody>

@@ -45,6 +45,16 @@ test("provider creates a seller, locks, unlocks, records a payment and deletes t
   await seller.waitForURL(/\/dashboard/);
   await expect(seller.getByText(SELLER.store).first()).toBeVisible();
 
+  // Plan toggles: Dukaan has no purchasing; switching to Business turns it on for the seller at once.
+  await expect(seller.getByRole("link", { name: "Purchases" })).toHaveCount(0);
+  await seller.goto("/purchases");
+  await seller.waitForURL(/\/forbidden/);
+  await page.getByLabel("Plan", { exact: true }).selectOption("Business");
+  await page.getByRole("button", { name: "Save subscription" }).click();
+  await expect(page.getByText("Subscription saved")).toBeVisible();
+  await seller.goto("/dashboard");
+  await expect(seller.getByRole("link", { name: "Purchases" })).toBeVisible();
+
   // Lock: the seller is signed out everywhere and can't sign back in.
   await page.getByRole("button", { name: "Lock now" }).click();
   await expect(page.getByText("Seller locked and signed out everywhere")).toBeVisible();

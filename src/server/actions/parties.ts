@@ -1,9 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { can } from "@/lib/permissions";
 import { objectId, partyInput } from "@/lib/schemas";
-import { AppError, type Ctx } from "../context";
+import { AppError, type Ctx, allowed } from "../context";
 import { LedgerEntry, Party } from "../models";
 import { addUdhaar, listOpenDocs, recordPayment, reverseEntry, saveParty, setPartyActive } from "../services/parties";
 import { withAuth } from "../with-auth";
@@ -11,11 +10,11 @@ import { withAuth } from "../with-auth";
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use a valid date");
 
 // Customers are managed by sales staff; suppliers by purchasing staff.
-const canKind = (ctx: Ctx, kind: string) => (kind === "supplier" ? can(ctx.role, "purchases:write") : can(ctx.role, "parties:write"));
+const canKind = (ctx: Ctx, kind: string) => (kind === "supplier" ? allowed(ctx, "purchases:write") : allowed(ctx, "parties:write"));
 
 export const upsertParty = withAuth("parties:read", z.object({ id: objectId.nullable(), data: partyInput }).strict(), async (ctx, { id, data }) => {
   if (!canKind(ctx, data.kind)) throw new AppError("FORBIDDEN", "You don't have permission to do that.");
-  if (id && !can(ctx.role, "ledger:reverse")) {
+  if (id && !allowed(ctx, "ledger:reverse")) {
     // Changing an existing opening balance moves what the person owes: owners and managers only.
     const before = await Party.findOne({ orgId: ctx.orgId, _id: id }, { openingBalance: 1 }).lean();
     if (before && before.openingBalance !== data.openingBalance) throw new AppError("FORBIDDEN", "Only an owner or manager can change an opening balance. Use udhaar or a payment instead.");

@@ -2,8 +2,8 @@ import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import mongoose from "mongoose";
 import { z } from "zod";
-import { can, type Permission } from "@/lib/permissions";
-import { AppError, isLockedOut, loadCtx, type Ctx } from "./context";
+import type { Permission } from "@/lib/permissions";
+import { allowed, AppError, isLockedOut, loadCtx, type Ctx } from "./context";
 import { LOCKED_MESSAGE } from "./services/subscription";
 import { connectDb } from "./db";
 
@@ -23,7 +23,7 @@ export function withAuth<S extends z.ZodType, T>(permission: Permission, schema:
         if (await isLockedOut()) return { ok: false, code: "LOCKED", error: LOCKED_MESSAGE };
         return { ok: false, code: "UNAUTHENTICATED", error: "Your session has expired. Please sign in again." };
       }
-      if (!can(ctx.role, permission)) return { ok: false, code: "FORBIDDEN", error: "You don't have permission to do that." };
+      if (!allowed(ctx, permission)) return { ok: false, code: "FORBIDDEN", error: "You don't have permission to do that." };
       const parsed = schema.safeParse(input);
       if (!parsed.success) {
         const fieldErrors: Record<string, string[]> = {};

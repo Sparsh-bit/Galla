@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { effectiveFeatures, permissionOn, type Feature } from "@/lib/features";
 import { can, isRole, type Permission, type Role } from "@/lib/permissions";
 import { auth } from "./auth";
 import { connectDb } from "./db";
@@ -15,6 +16,11 @@ export interface Ctx {
   orgId: string;
   orgName: string;
   role: Role;
+  /** Modules switched on for this business by Concilio. */
+  features: Feature[];
+  /** Plan name and the staff cap (0 = unlimited). */
+  plan: string;
+  maxStaff: number;
   ip?: string;
   ua?: string;
   /** Every business this user belongs to (for the business switcher). */
@@ -48,12 +54,12 @@ const loadAccess = cache(async (): Promise<Access> => {
   const active = session.session.activeOrganizationId;
   const all = await db
     .collection("member")
-    .aggregate<{ role: unknown; organizationId: Types.ObjectId; name?: string; sub?: { status?: string; paidUntil?: Date | null } }>([
+    .aggregate<{ role: unknown; organizationId: Types.ObjectId; name?: string; sub?: { status?: string; paidUntil?: Date | null; features?: string[]; plan?: string; maxStaff?: number } }>([
       { $match: { userId } },
       { $sort: { createdAt: 1 } },
       { $lookup: { from: "organization", localField: "organizationId", foreignField: "_id", as: "org", pipeline: [{ $project: { name: 1 } }] } },
       { $unwind: "$org" },
-      { $lookup: { from: "subscriptions", localField: "organizationId", foreignField: "orgId", as: "sub", pipeline: [{ $project: { status: 1, paidUntil: 1 } }] } },
+      { $lookup: { from: "subscriptions", localField: "organizationId", foreignField: "orgId", as: "sub", pipeline: [{ $project: { status: 1, paidUntil: 1, features: 1, plan: 1, maxStaff: 1 } }] } },
       { $project: { role: 1, organizationId: 1, name: "$org.name", sub: { $first: "$sub" } } },
     ])
     .toArray();
@@ -70,6 +76,9 @@ const loadAccess = cache(async (): Promise<Access> => {
       orgId: String(member.organizationId),
       orgName: String(member.name),
       role: member.role,
+      features: effectiveFeatures(member.sub?.features),
+      plan: member.sub?.plan ?? "Standard",
+      maxStaff: member.sub?.maxStaff ?? 0,
       ip: h.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? undefined,
       ua: h.get("user-agent") ?? undefined,
       orgs: memberships.map((m) => ({ id: String(m.organizationId), name: String(m.name) })),
@@ -84,7 +93,7 @@ export const loadCtx = cache(async (): Promise<Ctx | null> => (await loadAccess(
 export const isLockedOut = cache(async () => (await loadAccess()).locked);
 
 /** For pages: redirects to sign-in / onboarding / the locked screen, 403s on missing permission. */
-export async function requireCtx(permission?: Permission): Promise<Ctx> {
+export async function requireCtx(permission?: Permission, feature?: Feature): Promise<Ctx> {
   const access = await loadAccess();
   const ctx = access.ctx;
   if (!ctx) {
@@ -94,8 +103,16 @@ export async function requireCtx(permission?: Permission): Promise<Ctx> {
     if (session && (await ProviderAdmin.exists({ userId: session.user.id }))) redirect("/provider");
     redirect("/onboarding");
   }
-  if (permission && !can(ctx.role, permission)) redirect("/forbidden");
+  if ((permission && !allowed(ctx, permission)) || (feature && !ctx.features.includes(feature))) redirect("/forbidden");
   return ctx;
+}
+
+/** Role permission AND the module behind it being switched on for this business. */
+export const allowed = (ctx: Pick<Ctx, "role" | "features">, p: Permission) => can(ctx.role, p) && permissionOn(ctx.features, p);
+
+/** Throws when a module is not part of this business's plan. */
+export function needFeature(ctx: Pick<Ctx, "features">, f: Feature, label?: string) {
+  if (!ctx.features.includes(f)) throw new AppError("FORBIDDEN", `${label ?? "This feature"} isn't part of your plan. Contact Concilio Solutions to add it.`);
 }
 
 export const getOrgSettings = cache(async (orgId: string): Promise<OrgSettingsDoc> => {

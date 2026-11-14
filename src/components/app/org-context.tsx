@@ -3,6 +3,7 @@ import { createContext, useContext } from "react";
 import { formatMoney } from "@/lib/money";
 import type { Permission, Role } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
+import { permissionOn, type Feature } from "@/lib/features";
 
 export interface OrgInfo {
   orgId: string;
@@ -16,6 +17,8 @@ export interface OrgInfo {
   taxMode: "GST" | "VAT" | "NONE";
   scanner: { interKeyMs: number; minLength: number };
   receiptWidth: 58 | 80;
+  /** Modules switched on for this business by Concilio. */
+  features: Feature[];
 }
 
 const OrgContext = createContext<OrgInfo | null>(null);
@@ -30,6 +33,7 @@ export function useOrg() {
   return {
     ...v,
     money: (minor: number) => formatMoney(minor, v.currency, v.locale),
-    can: (p: Permission) => can(v.role, p),
+    can: (p: Permission) => can(v.role, p) && permissionOn(v.features, p),
+    has: (f: Feature) => v.features.includes(f),
   };
 }

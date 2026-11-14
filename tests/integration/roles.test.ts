@@ -1,3 +1,4 @@
+import { ALL_FEATURES } from "@/lib/features";
 /**
  * Role matrix: every server action is called as every role. Each call must be refused
  * exactly when the role lacks the permission, and otherwise get past authorization
@@ -49,7 +50,7 @@ afterAll(async () => {
   await rs?.stop();
 });
 
-const ctxFor = (role: Role): Ctx => ({ userId: `u-${role}`, userName: role, userEmail: `${role}@x.test`, orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Org", role });
+const ctxFor = (role: Role): Ctx => ({ userId: `u-${role}`, userName: role, userEmail: `${role}@x.test`, orgId: new mongoose.Types.ObjectId().toHexString(), orgName: "Org", role, features: ALL_FEATURES, plan: "Business", maxStaff: 0 });
 
 describe.each(ROLES)("role: %s", (role) => {
   it.each(ACTIONS)("%s.%s requires %s", async (mod, name, permission) => {

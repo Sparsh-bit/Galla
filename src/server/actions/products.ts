@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { seesCost } from "@/lib/permissions";
 import { objectId, productInput } from "@/lib/schemas";
-import { AppError, type Ctx } from "../context";
+import { AppError, needFeature, type Ctx } from "../context";
 import { Category, Product, TaxRate } from "../models";
 import { createProduct, findByCode, searchVariants, setProductActive, updateProduct } from "../services/products";
 import { inStockSerials } from "../services/serials";
@@ -11,6 +11,8 @@ import { audit } from "../services/system";
 import { withAuth } from "../with-auth";
 
 export const saveProduct = withAuth("products:write", z.object({ id: objectId.nullable(), data: productInput }).strict(), async (ctx, { id, data }) => {
+  if (data.trackSerial) needFeature(ctx, "serials", "Serial / IMEI tracking");
+  if (data.trackBatch) needFeature(ctx, "batches", "Batches & expiry");
   // Images uploaded to another business can't be attached here.
   if (data.images.some((url) => url.startsWith("/api/org-files/") && !url.startsWith(`/api/org-files/${ctx.orgId}/`))) {
     throw new AppError("INVALID", "Upload the image again.", { images: ["Upload the image again."] });

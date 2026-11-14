@@ -8,6 +8,9 @@ import { Logo, PoweredBy } from "@/components/app/logo";
 import { Button } from "@/components/ui/button";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { AppDownloads } from "@/components/landing/app-downloads";
+import { Pricing } from "@/components/landing/pricing";
+import { BeforeAfter, ContactCta, GettingStarted, HowASaleWorks, Modules, RolesAndTrust, Stats } from "@/components/landing/sections";
+import { CONTACT } from "@/lib/concilio";
 import { env } from "@/env";
 import { DEFAULT_REQUEST_ACCESS_URL } from "@/lib/downloads";
 
@@ -51,8 +54,9 @@ export default async function HomePage() {
           <Link href="/" aria-label="Galla home" className="rounded-lg"><Logo className="text-2xl" /></Link>
           <nav aria-label="Main navigation" className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
+            <a href="#modules" className="transition-colors hover:text-foreground">Modules</a>
             <a href="#offline" className="transition-colors hover:text-foreground">Offline</a>
-            <a href="#counters" className="transition-colors hover:text-foreground">Who it’s for</a>
+            <a href="#pricing" className="transition-colors hover:text-foreground">Pricing</a>
             <a href="#download" className="transition-colors hover:text-foreground">Download</a>
           </nav>
           <div className="flex items-center gap-2">
@@ -135,6 +139,10 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <Stats />
+        <BeforeAfter />
+        <HowASaleWorks />
+
         <section id="features" className="mx-auto max-w-7xl scroll-mt-20 px-4 py-20 sm:px-6 sm:py-28">
           <div className="reveal mx-auto max-w-2xl text-center">
             <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-[#047348]">Meet Galla</p>
@@ -152,6 +160,8 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
+
+        <Modules />
 
         <section id="offline" className="mx-auto max-w-7xl scroll-mt-20 px-4 pb-20 sm:px-6 sm:pb-28">
           <div className="workflow-panel reveal relative overflow-hidden rounded-[2rem] px-6 py-12 sm:px-12 sm:py-16">
@@ -175,6 +185,8 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <RolesAndTrust />
+
         <section id="counters" className="scroll-mt-20 pb-20 sm:pb-28">
           <div className="reveal mx-auto max-w-2xl px-4 text-center">
             <h2 className="text-balance text-3xl font-extrabold tracking-[-0.045em] sm:text-5xl text-[#032048]">Built for <span className="serif-accent">every counter.</span></h2>
@@ -185,6 +197,9 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        <Pricing requestAccessUrl={access} />
+        <GettingStarted />
 
         <section id="download" className="mx-auto max-w-5xl scroll-mt-20 px-4 pb-20 sm:px-6 sm:pb-28">
           <div className="reveal mb-10 max-w-2xl">
@@ -203,6 +218,7 @@ export default async function HomePage() {
               <RequestAccess href={access} className="h-12 rounded-full px-7 font-semibold shadow-lg shadow-emerald-700/25" />
               <Button asChild size="lg" variant="outline" className="h-12 rounded-full bg-white px-6"><a href="#download">Download the apps</a></Button>
             </div>
+            <ContactCta requestAccessUrl={access} />
           </div>
         </section>
       </main>
@@ -211,7 +227,7 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <Logo className="text-xl" />
           <PoweredBy />
-          <span>© {new Date().getFullYear()} Galla. Made for the people who keep business moving.</span>
+          <span>© {new Date().getFullYear()} {CONTACT.company}. Galla is made for the people who keep business moving.</span>
         </div>
       </footer>
       <LandingMotion />

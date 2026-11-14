@@ -11,21 +11,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { PlanPicker, type PlanValue } from "./plan-picker";
+import type { Feature } from "@/lib/features";
 
 const toPaise = (v: string) => Math.round((Number(String(v).replace(/[^\d.]/g, "")) || 0) * 100);
 const iso = (d: Date | string | null) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 
-interface Sub { plan: string; priceMonthly: number; paidUntil: Date | string | null; status: string; lockReason: string; notes: string }
+interface Sub { plan: string; features: Feature[]; maxStaff: number; priceMonthly: number; paidUntil: Date | string | null; status: string; lockReason: string; notes: string }
 
 export function SubscriptionForm({ orgId, sub }: { orgId: string; sub: Sub }) {
-  const [f, setF] = useState({ plan: sub.plan, price: String(sub.priceMonthly / 100), paidUntil: iso(sub.paidUntil), notes: sub.notes });
+  const [pl, setPl] = useState<PlanValue>({ plan: sub.plan, features: sub.features, maxStaff: sub.maxStaff });
+  const [f, setF] = useState({ price: String(sub.priceMonthly / 100), paidUntil: iso(sub.paidUntil), notes: sub.notes });
   const { run, pending } = useAction(updateSubscriptionAction);
   return (
     <Card>
-      <CardHeader><CardTitle>Subscription</CardTitle><CardDescription>When &ldquo;paid until&rdquo; passes, the seller is locked out automatically on every device.</CardDescription></CardHeader>
+      <CardHeader><CardTitle>Subscription</CardTitle><CardDescription>Plan and modules apply to the web, desktop and phone apps within a minute. When &ldquo;paid until&rdquo; passes, the seller is locked out automatically.</CardDescription></CardHeader>
       <CardContent>
-        <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run({ orgId, plan: f.plan, priceMonthly: toPaise(f.price), paidUntil: f.paidUntil || null, notes: f.notes }, { success: "Subscription saved" }); }}>
-          <FormField label="Plan"><Input value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} required /></FormField>
+        <form className="grid gap-3 sm:grid-cols-3" onSubmit={(e) => { e.preventDefault(); run({ orgId, plan: pl.plan, features: pl.features, maxStaff: pl.maxStaff, priceMonthly: toPaise(f.price), paidUntil: f.paidUntil || null, notes: f.notes }, { success: "Subscription saved" }); }}>
+          <PlanPicker value={pl} onChange={setPl} />
           <FormField label="Price per month (₹)"><Input value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} inputMode="decimal" /></FormField>
           <FormField label="Paid until" description="Empty = no expiry."><Input type="date" value={f.paidUntil} onChange={(e) => setF({ ...f, paidUntil: e.target.value })} /></FormField>
           <FormField label="Notes" className="sm:col-span-3" optional><Textarea rows={2} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></FormField>

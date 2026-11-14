@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowLeftRight, Boxes, ClipboardCheck, Download, SlidersHorizontal } from "lucide-react";
 import { formatQty, pageOf } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { Location, Product, StockLevel, Types, type ProductDoc } from "@/server/models";
 import { lowStock } from "@/server/services/reports";
 import { FilterSelect, Pagination, SearchInput } from "@/components/app/list-controls";
@@ -28,7 +27,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
   const page = pageOf(sp.page);
   const locations = await Location.find({ orgId: ctx.orgId }, { name: 1 }).sort({ isDefault: -1, name: 1 }).lean();
   const locationId = typeof sp.location === "string" && locations.some((l) => String(l._id) === sp.location) ? sp.location : null;
-  const showCost = can(ctx.role, "cost:read");
+  const showCost = allowed(ctx, "cost:read");
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 60) : "";
   const low = sp.filter === "low";
 
@@ -60,7 +59,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
   const cost = new Map(allProducts.flatMap((p) => p.variants.map((v) => [String(v._id), { c: v.costPrice ?? 0, s: p.unit?.scale ?? 1 }] as const)));
   const stockValue = totals.reduce((a, t) => a + (t.qty > 0 ? Math.round(((cost.get(String(t._id))?.c ?? 0) * t.qty) / (cost.get(String(t._id))?.s ?? 1)) : 0), 0);
   const lowCount = (await lowStock(ctx, 2000)).length;
-  const canWrite = can(ctx.role, "stock:write");
+  const canWrite = allowed(ctx, "stock:write");
 
   return (
     <PageBody>

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Building2, CircleAlert, IndianRupee, Lock } from "lucide-react";
+import { Building2, CircleCheck, IndianRupee, Lock } from "lucide-react";
+import { ALL_FEATURES } from "@/lib/features";
 import { formatMoney } from "@/lib/money";
 import { SearchInput } from "@/components/app/list-controls";
 import { NewSeller } from "@/components/provider/new-seller";
@@ -23,7 +24,7 @@ export default async function ProviderHome({ searchParams }: PageProps<"/provide
   const active = rows.filter((r) => r.state === "active");
   const tiles = [
     { label: "Sellers", value: String(rows.length), icon: Building2 },
-    { label: "Active", value: String(active.length), icon: CircleAlert },
+    { label: "Active", value: String(active.length), icon: CircleCheck },
     { label: "Locked or expired", value: String(rows.length - active.length), icon: Lock },
     { label: "Monthly revenue (active)", value: money(active.reduce((a, r) => a + r.priceMonthly, 0)), icon: IndianRupee },
   ];
@@ -53,9 +54,9 @@ export default async function ProviderHome({ searchParams }: PageProps<"/provide
               <TableRow key={r.id}>
                 <TableCell><Link href={`/provider/sellers/${r.id}`} className="font-semibold hover:underline">{r.name}</Link><div className="text-xs text-muted-foreground">{r.members} user{r.members === 1 ? "" : "s"} · {r.products} products</div></TableCell>
                 <TableCell><div>{r.ownerName}</div><div className="text-xs text-muted-foreground">{r.ownerEmail}</div></TableCell>
-                <TableCell>{r.plan}<div className="text-xs text-muted-foreground">{money(r.priceMonthly)}/month</div></TableCell>
+                <TableCell>{r.plan}<div className="text-xs text-muted-foreground">{r.modules}/{ALL_FEATURES.length} modules · {money(r.priceMonthly)}/month</div></TableCell>
                 <TableCell><Badge variant={STATE[r.state].variant}>{STATE[r.state].label}</Badge></TableCell>
-                <TableCell>{date(r.paidUntil)}</TableCell>
+                <TableCell className={r.state === "active" && r.paidUntil && new Date(r.paidUntil).getTime() - Date.now() < 7 * 86400e3 ? "font-semibold text-amber-700" : undefined}>{date(r.paidUntil)}</TableCell>
                 <TableCell className="text-right tabular-nums">{r.bills30}</TableCell>
                 <TableCell className="text-right tabular-nums">{money(r.revenue30)}</TableCell>
                 <TableCell>{date(r.lastSaleAt)}</TableCell>

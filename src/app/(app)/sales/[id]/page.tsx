@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatDate, formatQty, PAYMENT_LABELS } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { EinvoiceConfig, Location, Sale, type SaleDoc } from "@/server/models";
 import { EinvoicePanel } from "@/components/einvoice/einvoice-panel";
 import { PageBody, PageHeader } from "@/components/app/page-header";
@@ -35,7 +34,7 @@ export default async function SalePage({ params }: PageProps<"/sales/[id]">) {
     sale.returnOf ? Sale.findOne({ orgId: ctx.orgId, _id: sale.returnOf }, { number: 1 }).lean() : null,
   ]);
   const isReturn = sale.kind === "return";
-  const einvoiceEligible = s.taxMode === "GST" && sale.status === "completed" && !!sale.customer?.taxId;
+  const einvoiceEligible = ctx.features.includes("einvoice") && s.taxMode === "GST" && sale.status === "completed" && !!sale.customer?.taxId;
   const einvConfig = einvoiceEligible ? await EinvoiceConfig.findOne({ orgId: ctx.orgId }, { enabled: 1 }).lean() : null;
   const shareText = sale.status === "completed" ? billMessage(await getReceiptData(ctx, id), billUrl(ctx.orgId, id)) : null;
   const returnable = !isReturn && sale.status === "completed" && sale.lines.some((l) => l.qty - (l.returnedQty ?? 0) > 0);
@@ -56,8 +55,8 @@ export default async function SalePage({ params }: PageProps<"/sales/[id]">) {
         actions={
           <SaleActions
             saleId={id}
-            canReturn={returnable && can(ctx.role, "sales:return")}
-            canVoid={!isReturn && sale.status === "completed" && can(ctx.role, "sales:void")}
+            canReturn={returnable && allowed(ctx, "sales:return")}
+            canVoid={!isReturn && sale.status === "completed" && allowed(ctx, "sales:void")}
             hasCustomer={!!sale.customerId}
             balanceDue={sale.balanceDue ?? 0}
             lines={sale.lines.map((l, i) => ({ index: i, name: l.name ?? "", sold: l.qty, returned: l.returnedQty ?? 0, scale: l.scale ?? 1, unit: l.unit ?? "", total: l.total ?? 0, serials: l.serials ?? [] }))}
@@ -71,7 +70,7 @@ export default async function SalePage({ params }: PageProps<"/sales/[id]">) {
           <AlertTitle>This offline bill needs review</AlertTitle>
           <AlertDescription>
             <ul className="list-inside list-disc">{sale.syncIssues.map((i, k) => <li key={k}>{i.message}</li>)}</ul>
-            {can(ctx.role, "sales:return") && <div className="mt-3"><MarkReviewedButton saleId={id} /></div>}
+            {allowed(ctx, "sales:return") && <div className="mt-3"><MarkReviewedButton saleId={id} /></div>}
           </AlertDescription>
         </Alert>
       )}
@@ -144,7 +143,7 @@ export default async function SalePage({ params }: PageProps<"/sales/[id]">) {
               saleId={id}
               number={sale.number ?? ""}
               enabled={!!einvConfig?.enabled}
-              canManage={can(ctx.role, "sales:void")}
+              canManage={allowed(ctx, "sales:void")}
               state={{ status: (sale.einvoice?.status ?? "none") as "none", irn: sale.einvoice?.irn ?? undefined, ackNo: sale.einvoice?.ackNo ?? undefined, ackDt: sale.einvoice?.ackDt ?? undefined, ewbNo: sale.einvoice?.ewbNo ?? undefined, ewbValidTill: sale.einvoice?.ewbValidTill ?? undefined, errors: sale.einvoice?.errors ?? [] }}
             />
           )}

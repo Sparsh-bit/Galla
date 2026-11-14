@@ -10,6 +10,7 @@ import { AppError, type Ctx } from "../context";
 import { connectDb } from "../db";
 import { ProviderAdmin, ProviderAudit, Subscription, Types } from "../models";
 import { initializeBusiness, slugify } from "./onboarding";
+import { ALL_FEATURES, effectiveFeatures } from "@/lib/features";
 import { lockReason } from "./subscription";
 
 // Provider portal (Concilio Solutions staff): every seller business, subscriptions, locks.
@@ -80,7 +81,7 @@ export async function listSellers(q = "") {
   const since = new Date(Date.now() - 30 * 86400e3);
   const rx = q ? new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : null;
   const [orgs, sales, products] = await Promise.all([
-    d.collection("organization").aggregate<{ _id: Types.ObjectId; name: string; createdAt: Date; owner?: { email: string; name: string }; members: number; sub?: { plan?: string; priceMonthly?: number; paidUntil?: Date | null; status?: string; lockReason?: string } }>([
+    d.collection("organization").aggregate<{ _id: Types.ObjectId; name: string; createdAt: Date; owner?: { email: string; name: string }; members: number; sub?: { plan?: string; priceMonthly?: number; paidUntil?: Date | null; status?: string; lockReason?: string; features?: string[] } }>([
       { $lookup: { from: "member", localField: "_id", foreignField: "organizationId", as: "m" } },
       { $lookup: { from: "user", let: { owner: { $first: { $filter: { input: "$m", cond: { $eq: ["$$this.role", "owner"] } } } } }, pipeline: [{ $match: { $expr: { $eq: ["$_id", "$$owner.userId"] } } }, { $project: { email: 1, name: 1 } }], as: "owner" } },
       { $lookup: { from: "subscriptions", localField: "_id", foreignField: "orgId", as: "sub" } },
@@ -102,7 +103,7 @@ export async function listSellers(q = "") {
       const s = saleBy.get(String(o._id));
       return {
         id: String(o._id), name: o.name, createdAt: o.createdAt, ownerEmail: o.owner?.email ?? "", ownerName: o.owner?.name ?? "", members: o.members,
-        plan: o.sub?.plan ?? "Standard", priceMonthly: o.sub?.priceMonthly ?? 0, paidUntil: o.sub?.paidUntil ?? null, state: lockReason(o.sub) ?? "active",
+        plan: o.sub?.plan ?? "Standard", modules: effectiveFeatures(o.sub?.features).length, priceMonthly: o.sub?.priceMonthly ?? 0, paidUntil: o.sub?.paidUntil ?? null, state: lockReason(o.sub) ?? "active",
         products: prodBy.get(String(o._id)) ?? 0, bills30: s?.bills ?? 0, revenue30: s?.revenue ?? 0, lastSaleAt: s?.last ?? null,
       };
     });
@@ -129,7 +130,7 @@ export async function getSeller(orgId: string) {
     id: orgId, name: String(org.name), createdAt: org.createdAt as Date, settings,
     members: members.map((m) => ({ role: m.role, email: m.user?.email ?? "", name: m.user?.name ?? "", joinedAt: m.createdAt })),
     subscription: {
-      plan: sub?.plan ?? "Standard", priceMonthly: sub?.priceMonthly ?? 0, paidUntil: sub?.paidUntil ?? null, status: sub?.status ?? "active",
+      plan: sub?.plan ?? "Standard", priceMonthly: sub?.priceMonthly ?? 0, features: effectiveFeatures(sub?.features), maxStaff: sub?.maxStaff ?? 0, paidUntil: sub?.paidUntil ?? null, status: sub?.status ?? "active",
       lockReason: sub?.lockReason ?? "", notes: sub?.notes ?? "", payments: [...(sub?.payments ?? [])].reverse(), state: lockReason(sub) ?? "active",
     },
     counts: { products: counts[0], sales: counts[1], parties: counts[2], purchases: counts[3] },
@@ -145,7 +146,7 @@ export async function recentAudit(limit = 30) {
 
 export interface NewSeller {
   storeName: string; ownerName: string; email: string; password: string; phone: string; stateCode: string; taxId: string;
-  plan: string; priceMonthly: number; paidUntil: string | null;
+  plan: string; priceMonthly: number; paidUntil: string | null; features: string[]; maxStaff: number;
 }
 
 export async function createSeller(p: ProviderUser, input: NewSeller) {
@@ -157,13 +158,13 @@ export async function createSeller(p: ProviderUser, input: NewSeller) {
     const org = await auth.api.createOrganization({ body: { name: input.storeName, slug: slugify(input.storeName), userId: user.id } });
     if (!org) throw new AppError("CONFLICT", "Could not create the business.");
     orgId = org.id;
-    const ctx: Ctx = { userId: user.id, userName: input.ownerName, userEmail: email, orgId, orgName: org.name, role: "owner" };
+    const ctx: Ctx = { userId: user.id, userName: input.ownerName, userEmail: email, orgId, orgName: org.name, role: "owner", features: ALL_FEATURES, plan: input.plan, maxStaff: input.maxStaff };
     await initializeBusiness(ctx, {
       name: input.storeName, businessType: "Retail store", currency: "INR", locale: "en-IN", timezone: "Asia/Kolkata",
       taxMode: "GST", taxId: input.taxId, stateCode: input.stateCode, locationName: "Main Store", sample: false,
     });
     if (input.phone) await (await db()).collection("orgsettings").updateOne({ orgId: new Types.ObjectId(orgId) }, { $set: { phone: input.phone } });
-    await Subscription.create({ orgId, plan: input.plan, priceMonthly: input.priceMonthly, paidUntil: input.paidUntil ? new Date(input.paidUntil) : null });
+    await Subscription.create({ orgId, plan: input.plan, priceMonthly: input.priceMonthly, features: effectiveFeatures(input.features), maxStaff: input.maxStaff, paidUntil: input.paidUntil ? new Date(input.paidUntil) : null });
     await audit(p, "seller.create", { id: orgId, name: org.name }, `owner ${email}`);
     return { id: orgId };
   } catch (err) {
@@ -190,14 +191,14 @@ async function revokeSessions(orgId: string) {
   await (await db()).collection("session").deleteMany({ userId: { $in: ids } });
 }
 
-export async function updateSubscription(p: ProviderUser, orgId: string, input: { plan: string; priceMonthly: number; paidUntil: string | null; notes: string }) {
+export async function updateSubscription(p: ProviderUser, orgId: string, input: { plan: string; priceMonthly: number; paidUntil: string | null; notes: string; features: string[]; maxStaff: number }) {
   const name = await orgName(orgId);
   await Subscription.updateOne(
     { orgId },
-    { $set: { plan: input.plan, priceMonthly: input.priceMonthly, paidUntil: input.paidUntil ? new Date(input.paidUntil) : null, notes: input.notes } },
+    { $set: { plan: input.plan, priceMonthly: input.priceMonthly, features: effectiveFeatures(input.features), maxStaff: input.maxStaff, paidUntil: input.paidUntil ? new Date(input.paidUntil) : null, notes: input.notes } },
     { upsert: true },
   );
-  await audit(p, "subscription.update", { id: orgId, name }, `${input.plan}, paid until ${input.paidUntil ?? "no expiry"}`);
+  await audit(p, "subscription.update", { id: orgId, name }, `${input.plan} [${effectiveFeatures(input.features).join(", ") || "core only"}], staff ${input.maxStaff || "unlimited"}, paid until ${input.paidUntil ?? "no expiry"}`);
 }
 
 /** Records money received and extends "paid until" by the months paid for (from today if already expired). */

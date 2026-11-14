@@ -1,3 +1,4 @@
+import { ALL_FEATURES } from "@/lib/features";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
@@ -20,7 +21,7 @@ export default async function PublicBillPage({ params }: PageProps<"/bill/[token
   const db = (await connectDb()).connection.db!;
   const org = await db.collection("organization").findOne({ _id: new Types.ObjectId(ids.orgId) }, { projection: { name: 1 } });
   if (!org) notFound();
-  const ctx = { orgId: ids.orgId, orgName: String(org.name), userId: "public", userName: "", userEmail: "", role: "cashier" } satisfies Ctx;
+  const ctx = { orgId: ids.orgId, orgName: String(org.name), userId: "public", userName: "", userEmail: "", role: "cashier", features: ALL_FEATURES, plan: "Business", maxStaff: 0 } satisfies Ctx;
   const d = await getReceiptData(ctx, ids.saleId).catch(() => null);
   if (!d) notFound();
   d.org.logoUrl = null; // logos are served to signed-in users only

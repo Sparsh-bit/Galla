@@ -2,8 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import type { ImportKind, RowError } from "@/lib/import";
-import { can, type Permission } from "@/lib/permissions";
-import { loadCtx } from "../context";
+import { type Permission } from "@/lib/permissions";
+import { loadCtx, allowed } from "../context";
 import { connectDb } from "../db";
 import { applyImport, readSheet, validate } from "../services/imports";
 import { toSafeError, type ActionResult } from "../with-auth";
@@ -15,7 +15,7 @@ async function guard(form: FormData) {
   if (!ctx) throw new Error("Your session has expired. Please sign in again.");
   const kind = String(form.get("kind")) as ImportKind;
   if (!(kind in PERM)) throw new Error("Unknown import type");
-  if (!PERM[kind].every((p) => can(ctx.role, p))) throw new Error("You don't have permission to do that.");
+  if (!PERM[kind].every((p) => allowed(ctx, p))) throw new Error("You don't have permission to do that.");
   const file = form.get("file");
   if (!(file instanceof File)) throw new Error("Choose a file to import");
   await connectDb();

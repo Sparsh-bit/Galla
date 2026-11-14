@@ -3,8 +3,7 @@ import Link from "next/link";
 import { Plus, ReceiptText, Truck } from "lucide-react";
 import { formatDate, pageOf } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
-import { can } from "@/lib/permissions";
-import { getOrgSettings, requireCtx } from "@/server/context";
+import { getOrgSettings, requireCtx, allowed } from "@/server/context";
 import { PurchaseOrder } from "@/server/models";
 import { FilterSelect, Pagination, SearchInput } from "@/components/app/list-controls";
 import { PageBody, PageHeader } from "@/components/app/page-header";
@@ -31,7 +30,7 @@ export default async function PurchasesPage({ searchParams }: PageProps<"/purcha
   }
   if (typeof sp.status === "string" && ["ordered", "partial", "received", "cancelled"].includes(sp.status)) filter.status = sp.status;
   const [rows, total] = await Promise.all([PurchaseOrder.find(filter, { receipts: 0 }).sort({ createdAt: -1 }).skip((page - 1) * PAGE).limit(PAGE).lean(), PurchaseOrder.countDocuments(filter)]);
-  const canWrite = can(ctx.role, "purchases:write");
+  const canWrite = allowed(ctx, "purchases:write");
 
   return (
     <PageBody>
