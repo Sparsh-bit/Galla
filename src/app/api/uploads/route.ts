@@ -8,7 +8,7 @@ import { loadCtx, allowed } from "@/server/context";
 import { csrfOk } from "@/server/http";
 import { RateLimit } from "@/server/models";
 
-const MAX_IMAGE = 2 * 1024 * 1024;
+const MAX_IMAGE = 10 * 1024 * 1024; // phone cameras make 4–10 MB photos; the apps shrink them first, this is the safety net
 const MAX_DOC = 10 * 1024 * 1024;
 const MAX_MULTIPART = MAX_DOC + 64 * 1024;
 
@@ -60,8 +60,14 @@ export async function POST(req: Request) {
   const dir = doc
     ? path.resolve(env.UPLOAD_DIR, "docs", ctx.orgId)
     : path.resolve(env.UPLOAD_DIR, "images", ctx.orgId);
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), buf, { flag: "wx" });
+  try {
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, name), buf, { flag: "wx" });
+  } catch (e) {
+    // Usually a missing or read-only storage volume on the host. Say so instead of a blank 500.
+    console.error("[uploads] cannot write to", dir, e);
+    return NextResponse.json({ error: "The server could not save the file. Ask Concilio Solutions to check the file storage." }, { status: 500 });
+  }
   if (!doc) return NextResponse.json({ url: `/api/org-files/${ctx.orgId}/${name}` });
   const original = file.name.replace(/[^\w.\- ()]/g, "_").slice(0, 120) || name;
   return NextResponse.json({ url: `/api/docs/${name}`, name: original, type: ext, size: buf.length });

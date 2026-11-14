@@ -23,6 +23,7 @@ import { useScanner } from "@/components/scanner/use-scanner";
 
 export { UNITS } from "@/lib/units";
 import { UNITS } from "@/lib/units";
+import { uploadImage } from "@/lib/upload-image";
 
 interface Row {
   key: string;
@@ -122,12 +123,8 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
     setUploading(true);
     try {
       for (const file of Array.from(files).slice(0, 6 - images.length)) {
-        const body = new FormData();
-        body.append("file", file);
-        const res = await fetch("/api/uploads", { method: "POST", body });
-        const json = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !json.url) throw new Error(json.error ?? "Upload failed");
-        setImages((im) => [...im, json.url!]);
+        const url = await uploadImage(file);
+        setImages((im) => [...im, url]);
       }
     } catch (e) {
       toast.error((e as Error).message);

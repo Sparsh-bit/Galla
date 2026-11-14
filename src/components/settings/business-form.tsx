@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
+import { uploadImage } from "@/lib/upload-image";
 import { BUSINESS_TYPES, INDIAN_STATES, type SettingsInput } from "@/lib/schemas";
 import { updateBusiness } from "@/server/actions/settings";
 import { FormField } from "@/components/app/form-field";
@@ -35,13 +36,13 @@ export function BusinessForm({ initial }: { initial: Form }) {
   async function upload(file: File | undefined) {
     if (!file) return;
     setUploading(true);
-    const body = new FormData();
-    body.append("file", file);
-    const res = await fetch("/api/uploads", { method: "POST", body });
-    const json = (await res.json()) as { url?: string; error?: string };
-    setUploading(false);
-    if (!res.ok || !json.url) return toast.error(json.error ?? "Upload failed");
-    set("logoUrl", json.url);
+    try {
+      set("logoUrl", await uploadImage(file));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   return (
