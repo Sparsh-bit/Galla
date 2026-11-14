@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { formatMoney } from "@/lib/money";
-import { pct, qtyText, receiptTitle, upiLink } from "@/lib/receipt";
+import { pct, qtyText, receiptTitle, upiLink, watermark } from "@/lib/receipt";
+import { Watermark } from "@/components/print/watermark";
 import { amountInWords as inWords, stateName } from "@/lib/invoice-html";
 import { requireCtx } from "@/server/context";
 import { getReceiptData } from "@/server/services/receipt";
@@ -25,7 +26,8 @@ export default async function InvoicePrintPage({ params, searchParams }: PagePro
     <div className="min-h-dvh bg-neutral-100 py-8 text-black print:bg-white print:py-0">
       <style>{`@media print { @page { size: A4; margin: 12mm } html, body { background: #fff !important } }`}</style>
       <AutoPrint auto={sp.auto === "1"} />
-      <article className="mx-auto w-[210mm] max-w-full bg-white p-[12mm] text-[12px] leading-relaxed shadow print:w-auto print:p-0 print:shadow-none">
+      <article className="relative mx-auto w-[210mm] max-w-full overflow-hidden bg-white p-[12mm] text-[12px] leading-relaxed shadow print:w-auto print:p-0 print:shadow-none">
+        <Watermark w={watermark(d)} size="text-[26mm]" />
         <header className="flex items-start justify-between gap-6 border-b pb-4">
           <div className="flex gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}

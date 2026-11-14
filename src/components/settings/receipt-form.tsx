@@ -17,7 +17,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type Form = z.input<typeof receiptSettingsInput>;
 
-export function ReceiptForm({ initial, gst }: { initial: Form; gst: boolean }) {
+export function ReceiptForm({ initial, gst, businessName, hasLogo }: { initial: Form; gst: boolean; businessName: string; hasLogo: boolean }) {
   const router = useRouter();
   const { run, pending, fieldErrors } = useAction(updateReceipt);
   const [f, setF] = useState<Form>(initial);
@@ -25,6 +25,29 @@ export function ReceiptForm({ initial, gst }: { initial: Form; gst: boolean }) {
   const fy = `${year}-${year + 1}`;
   return (
     <form onSubmit={(e) => { e.preventDefault(); run(f, { success: "Saved", onSuccess: () => router.refresh() }); }} className="space-y-6">
+      <Card>
+        <CardHeader><CardTitle>Shop name and background</CardTitle><CardDescription>What the customer sees at the top of the bill, and the faint picture behind it.</CardDescription></CardHeader>
+        <CardContent>
+          <FieldGroup>
+            <FormField label="Shop name on the bill" optional error={fieldErrors.shopName} description={`Leave empty to print “${businessName}”.`}>
+              <Input value={f.shopName ?? ""} onChange={(e) => setF({ ...f, shopName: e.target.value })} maxLength={80} placeholder={businessName} />
+            </FormField>
+            <FormField label="Background of the bill" description="Shown on A4 invoices, screen and PDF bills. Thermal rolls print plain text, so the shop name above is what they show.">
+              <ToggleGroup type="single" variant="outline" value={f.bgMode ?? "none"} onValueChange={(v) => v && setF({ ...f, bgMode: v as "none" | "text" | "logo" })} aria-label="Background of the bill">
+                <ToggleGroupItem value="none" className="px-5">None</ToggleGroupItem>
+                <ToggleGroupItem value="text" className="px-5">Words</ToggleGroupItem>
+                <ToggleGroupItem value="logo" className="px-5" disabled={!hasLogo} title={hasLogo ? undefined : "Add a logo in Business profile first"}>My logo</ToggleGroupItem>
+              </ToggleGroup>
+            </FormField>
+            {f.bgMode === "text" && <FormField label="Words behind the bill" error={fieldErrors.bgText} description="For example your shop name, “PAID”, or a slogan."><Input value={f.bgText ?? ""} onChange={(e) => setF({ ...f, bgText: e.target.value })} maxLength={40} placeholder="e.g. Sharma Traders" /></FormField>}
+            <div aria-label="Preview of the bill background" className="relative grid h-32 place-items-center overflow-hidden rounded-xl border bg-white">
+              {f.bgMode === "text" && f.bgText?.trim() && <span className="absolute -rotate-[18deg] select-none text-4xl font-extrabold text-black/[0.08]">{f.bgText}</span>}
+              {f.bgMode === "logo" && hasLogo && <span className="absolute -rotate-[18deg] select-none text-sm font-semibold text-black/30">your logo, faint</span>}
+              <div className="relative text-center"><p className="text-base font-bold">{f.shopName?.trim() || businessName}</p><p className="text-xs text-muted-foreground">Preview</p></div>
+            </div>
+          </FieldGroup>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle>Receipt</CardTitle><CardDescription>Default paper width. Each counter can still override it in Printer & scanner.</CardDescription></CardHeader>
         <CardContent>

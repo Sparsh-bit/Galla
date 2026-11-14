@@ -24,11 +24,12 @@ export async function getReceiptData(ctx: Ctx, saleId: string): Promise<ReceiptD
 
   return {
     org: {
-      name: ctx.orgName, legalName: s.legalName ?? "", address: [a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", "),
+      name: s.receipt?.shopName?.trim() || ctx.orgName, legalName: s.legalName ?? "", address: [a.line1, a.line2, a.city, a.state, a.postalCode].filter(Boolean).join(", "),
       phone: s.phone ?? "", email: s.email ?? "", taxId: s.taxId ?? "", taxMode: s.taxMode as "GST" | "VAT" | "NONE", logoUrl: s.logoUrl ?? null,
       header: s.receipt?.header ?? "", footer: s.receipt?.footer ?? "", terms: s.invoiceTerms ?? "", upiId: s.receipt?.upiId ?? "",
       showUpiQr: !!s.receipt?.showUpiQr, showHsn: !!s.receipt?.showHsn, currency: s.currency, locale: s.locale, timezone: s.timezone,
       paperWidth: (s.receipt?.paperWidth ?? 80) as 58 | 80,
+      bgMode: (s.receipt?.bgMode ?? "none") as "none" | "text" | "logo", bgText: s.receipt?.bgText ?? "",
     },
     sale: {
       id: String(sale._id), number: sale.number ?? "", kind: sale.kind, status: sale.status,

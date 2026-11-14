@@ -38,6 +38,9 @@ const orgSettingsSchema = new Schema(
     fiscalYearStartMonth: { type: Number, default: 4, min: 1, max: 12 },
     receipt: {
       paperWidth: { type: Number, enum: [58, 80], default: 80 },
+      shopName: { type: String, default: "", maxlength: 80 }, // printed instead of the business name when set
+      bgMode: { type: String, enum: ["none", "text", "logo"], default: "none" }, // faint picture behind the bill
+      bgText: { type: String, default: "", maxlength: 40 },
       header: { type: String, default: "" },
       footer: { type: String, default: "Thank you! Visit again." },
       showHsn: { type: Boolean, default: false },

@@ -155,6 +155,8 @@ export const API_ROUTES = {
   "members.remove": { method: "DELETE", path: "/members/:memberId", summary: "Remove a member." },
   audit: { method: "GET", path: "/audit", summary: "Audit log (?entity, ?q, ?page).", query: ["entity", "q", ...PAGE] },
   "imports.preview": { method: "POST", path: "/imports/preview", summary: "Preview an Excel/CSV import (multipart: kind, file).", multipart: true },
+  "ai.menu": { method: "POST", path: "/ai/menu", summary: "Read a menu / price list from a photo or PDF into draft product rows (multipart: file). Nothing is saved.", multipart: true },
+  "ai.addProducts": { method: "POST", path: "/ai/menu/products", summary: "Save reviewed menu rows as products." },
   "imports.run": { method: "POST", path: "/imports", summary: "Run an Excel/CSV import (multipart: kind, file).", multipart: true },
 } as const satisfies Record<string, RouteSpec>;
 

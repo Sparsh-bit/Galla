@@ -1,6 +1,7 @@
 import "server-only";
 import { API_ROUTES, type PathParams, type RouteName, type RouteSpec } from "@/lib/api/routes";
 import * as authA from "../actions/auth";
+import * as ai from "../actions/ai";
 import * as einvoice from "../actions/einvoice";
 import * as imports from "../actions/imports";
 import * as inventory from "../actions/inventory";
@@ -205,6 +206,8 @@ const HANDLERS = {
   "members.remove": act(authA.removeMemberAction),
   audit: get((ctx, r) => Q.auditLog(ctx, r.query)),
   "imports.preview": actAs<MultipartImport>()(imports.previewImport, (r) => r.form ?? new FormData()),
+  "ai.menu": actAs<{ file: Blob }>()(ai.readMenuFile, (r) => r.form ?? new FormData()),
+  "ai.addProducts": act(ai.addMenuProducts),
   "imports.run": actAs<MultipartImport>()(imports.runImport, (r) => r.form ?? new FormData()),
 } satisfies { [K in RouteName]: Handler };
 

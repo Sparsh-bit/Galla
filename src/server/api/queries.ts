@@ -230,6 +230,7 @@ export async function listSales(ctx: Ctx, q: Query) {
   if (t) filter.$or = [{ number: rx(t) }, { "customer.name": rx(t) }, { "customer.phone": rx(t) }];
   if (q.type === "return") filter.kind = "return";
   else if (q.type === "credit") filter.balanceDue = { $gt: 0 };
+  else if (q.type === "paid") Object.assign(filter, { kind: { $ne: "return" }, status: "completed", balanceDue: { $lte: 0 } });
   else if (q.type === "void") filter.status = "void";
   else if (q.type === "invoice") filter.kind = "tax_invoice";
   else if (q.type === "review") filter["syncIssues.0"] = { $exists: true };

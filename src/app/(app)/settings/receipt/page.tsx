@@ -13,12 +13,14 @@ export default async function ReceiptSettingsPage() {
       <PageHeader title="Receipts & numbering" back={{ href: "/settings", label: "Settings" }} />
       <ReceiptForm
         initial={{
-          paperWidth: (s.receipt?.paperWidth ?? 80) as 58 | 80, header: s.receipt?.header ?? "", footer: s.receipt?.footer ?? "", showHsn: !!s.receipt?.showHsn,
+          paperWidth: (s.receipt?.paperWidth ?? 80) as 58 | 80, shopName: s.receipt?.shopName ?? "", bgMode: (s.receipt?.bgMode ?? "none") as "none" | "text" | "logo", bgText: s.receipt?.bgText ?? "", header: s.receipt?.header ?? "", footer: s.receipt?.footer ?? "", showHsn: !!s.receipt?.showHsn,
           showUpiQr: !!s.receipt?.showUpiQr, upiId: s.receipt?.upiId ?? "",
           prefixes: { sale: s.prefixes?.sale ?? "S", invoice: s.prefixes?.invoice ?? "INV", return: s.prefixes?.return ?? "CN", purchase: s.prefixes?.purchase ?? "PO" },
           scanner: { interKeyMs: s.scanner?.interKeyMs ?? 35, minLength: s.scanner?.minLength ?? 4 },
         }}
         gst={s.taxMode === "GST"}
+        businessName={ctx.orgName}
+        hasLogo={!!s.logoUrl}
       />
     </PageBody>
   );

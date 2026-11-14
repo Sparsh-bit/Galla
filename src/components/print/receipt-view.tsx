@@ -1,5 +1,6 @@
 import { formatMoney } from "@/lib/money";
-import { pct, qtyText, receiptTitle, type ReceiptData } from "@/lib/receipt";
+import { pct, qtyText, receiptTitle, watermark, type ReceiptData } from "@/lib/receipt";
+import { Watermark } from "./watermark";
 
 const METHOD: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI", credit: "On account", other: "Other" };
 
@@ -7,7 +8,8 @@ const METHOD: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI",
 export function ReceiptView({ d, width, qr }: { d: ReceiptData; width: number; qr: string | null }) {
   const m = (v: number) => formatMoney(v, d.org.currency, d.org.locale);
   return (
-    <article className="mx-auto bg-white px-[3mm] py-[4mm] font-mono text-[11px] leading-snug shadow print:shadow-none" style={{ width: `${width}mm` }}>
+    <article className="relative mx-auto overflow-hidden bg-white px-[3mm] py-[4mm] font-mono text-[11px] leading-snug shadow print:shadow-none" style={{ width: `${width}mm` }}>
+      <Watermark w={watermark(d)} size="text-[11mm]" />
       <header className="text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {d.org.logoUrl && <img src={d.org.logoUrl} alt="" className="mx-auto mb-1 max-h-14 grayscale" />}

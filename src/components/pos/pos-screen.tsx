@@ -488,6 +488,8 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
         onOpenChange={setPayOpen}
         total={bill.grandTotal}
         hasCustomer={!!customer}
+        customerName={customer?.name}
+        customerPicker={<CustomerPicker offlineSearch={offline.online ? undefined : offline.customersLocal} value={customer} onChange={(c) => { setCustomer(c); if (!c) setKind("receipt"); }} />}
         upiId={config.upiId}
         orgName={config.orgName}
         pending={paying}

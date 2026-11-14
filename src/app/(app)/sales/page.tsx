@@ -34,6 +34,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
   }
   if (sp.type === "return") filter.kind = "return";
   else if (sp.type === "credit") filter.balanceDue = { $gt: 0 };
+  else if (sp.type === "paid") Object.assign(filter, { kind: { $ne: "return" }, status: "completed", balanceDue: { $lte: 0 } });
   else if (sp.type === "void") filter.status = "void";
   else if (sp.type === "invoice") filter.kind = "tax_invoice";
   else if (sp.type === "review") filter["syncIssues.0"] = { $exists: true };
@@ -65,7 +66,8 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
           options={[
             { value: "invoice", label: "Tax invoices" },
             { value: "return", label: "Returns" },
-            { value: "credit", label: "Unpaid (credit)" },
+            { value: "paid", label: "Paid in full" },
+            { value: "credit", label: "Udhaar (balance due)" },
             { value: "void", label: "Voided" },
             { value: "review", label: "Needs review (offline)" },
           ]}
@@ -109,7 +111,7 @@ export default async function SalesPage({ searchParams }: PageProps<"/sales">) {
                       {r.status === "void" && <Badge variant="destructive">Void</Badge>}
                       {r.deviceCode && <Badge variant="outline">Offline · {r.deviceCode}</Badge>}
                       {(r.syncIssues?.length ?? 0) > 0 && <Badge variant="destructive">Needs review</Badge>}
-                      {(r.balanceDue ?? 0) > 0 && <Badge variant="outline" className="border-warning text-warning-foreground dark:text-warning">Due {money(r.balanceDue ?? 0)}</Badge>}
+                      {(r.balanceDue ?? 0) > 0 ? <Badge variant="outline" className="border-warning text-warning-foreground dark:text-warning">Udhaar · due {money(r.balanceDue ?? 0)}</Badge> : r.kind !== "return" && r.status === "completed" && <Badge variant="secondary">Paid</Badge>}
                     </div>
                   </TableCell>
                   <TableCell>

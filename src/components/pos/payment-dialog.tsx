@@ -29,15 +29,19 @@ const METHODS: { id: Method; label: string; icon: typeof Banknote }[] = [
 ];
 
 export function PaymentDialog({
-  open, onOpenChange, total, hasCustomer, upiId, orgName, pending, kind, onKindChange, onPay,
+  open, onOpenChange, total, hasCustomer, customerName, customerPicker, upiId, orgName, pending, kind, onKindChange, onPay,
 }: {
-  open: boolean; onOpenChange: (o: boolean) => void; total: number; hasCustomer: boolean; upiId: string; orgName: string; pending: boolean;
+  open: boolean; onOpenChange: (o: boolean) => void; total: number; hasCustomer: boolean; customerName?: string; customerPicker?: React.ReactNode; upiId: string; orgName: string; pending: boolean;
   kind: "receipt" | "tax_invoice"; onKindChange: (k: "receipt" | "tax_invoice") => void; onPay: (tenders: Tender[]) => void;
 }) {
   const t = useT();
   const org = useOrg();
   // The POS remounts this dialog (via `key`) each time it opens, so initial state is fresh.
   const [rows, setRows] = useState<{ method: Method; amount: string; reference: string }[]>(() => [{ method: "cash", amount: fromMinor(total), reference: "" }]);
+  // Udhaar: the customer pays part now (maybe nothing) and the rest goes on their khata.
+  const [mode, setMode] = useState<"paid" | "udhaar">("paid");
+  const [paidNow, setPaidNow] = useState("");
+  const [paidVia, setPaidVia] = useState<"cash" | "upi" | "card">("cash");
   const [qrImg, setQrImg] = useState<{ url: string; data: string } | null>(null);
 
   const parsed = rows.map((r) => {
@@ -68,7 +72,22 @@ export function PaymentDialog({
   const qr = upiUrl && qrImg?.url === upiUrl ? qrImg.data : null;
 
   const setRow = (i: number, patch: Partial<(typeof rows)[number]>) => setRows((rs) => rs.map((r, j) => (j === i ? { ...r, ...patch } : r)));
-  const submit = () => !invalid && !pending && onPay(rows.map((r, i) => ({ method: r.method, amount: parsed[i], reference: r.reference.trim() })).filter((t) => t.amount > 0));
+  let paidMinor = 0;
+  try {
+    paidMinor = paidNow.trim() ? toMinor(paidNow) : 0;
+  } catch {
+    paidMinor = NaN;
+  }
+  const left = total - (Number.isFinite(paidMinor) ? paidMinor : 0);
+  const udhaarProblem = !hasCustomer ? "Choose the customer first: their name is needed to keep the khata." : !Number.isFinite(paidMinor) || paidMinor < 0 ? "Check the amount paid." : paidMinor >= total ? "The full amount is paid, so choose Paid in full." : null;
+  const submit = () => {
+    if (pending) return;
+    if (mode === "udhaar") {
+      if (udhaarProblem) return;
+      return onPay([...(paidMinor > 0 ? [{ method: paidVia, amount: paidMinor, reference: "" }] : []), { method: "credit" as const, amount: left, reference: "" }]);
+    }
+    if (!invalid) onPay(rows.map((r, i) => ({ method: r.method, amount: parsed[i], reference: r.reference.trim() })).filter((t) => t.amount > 0));
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,7 +109,36 @@ export function PaymentDialog({
           </ToggleGroup>
         )}
 
-        <div className="space-y-3">
+        <ToggleGroup type="single" variant="outline" value={mode} onValueChange={(v) => v && setMode(v as "paid" | "udhaar")} className="w-full" aria-label="How is this bill paid">
+          <ToggleGroupItem value="paid" className="flex-1">Paid in full</ToggleGroupItem>
+          <ToggleGroupItem value="udhaar" className="flex-1">Udhaar (pay later)</ToggleGroupItem>
+        </ToggleGroup>
+
+        {mode === "udhaar" && (
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Customer (name is required)</Label>
+              {customerPicker}
+              {!hasCustomer && <p className="text-xs text-destructive">Pick or add the customer. Their name keeps the khata correct.</p>}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="paid-now" className="text-xs">Paid now (leave empty if nothing)</Label>
+              <div className="flex gap-2">
+                <Input id="paid-now" inputMode="decimal" value={paidNow} onChange={(e) => setPaidNow(e.target.value)} onFocus={(e) => e.target.select()} className="h-10 flex-1 text-lg tabular-nums" placeholder="0" aria-invalid={!Number.isFinite(paidMinor) || undefined} autoFocus />
+                <div className="flex gap-1" role="group" aria-label="Paid by">
+                  {(["cash", "upi", "card"] as const).map((m) => <Button key={m} type="button" size="sm" className="h-10" variant={paidVia === m ? "default" : "outline"} aria-pressed={paidVia === m} onClick={() => setPaidVia(m)}>{m === "upi" ? "UPI" : m[0].toUpperCase() + m.slice(1)}</Button>)}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-lg bg-warning/10 px-4 py-3">
+              <span className="text-sm">Goes to {customerName ? `${customerName}’s` : "the customer’s"} udhaar</span>
+              <span className="text-2xl font-semibold tabular-nums">{org.money(Math.max(0, Number.isFinite(left) ? left : total))}</span>
+            </div>
+            {udhaarProblem && hasCustomer && <p className="text-sm text-destructive">{udhaarProblem}</p>}
+          </div>
+        )}
+
+        <div className={mode === "paid" ? "space-y-3" : "hidden"}>
           {rows.map((r, i) => (
             <div key={i} className="space-y-2 rounded-lg border p-3">
               <div className="flex gap-1.5">
@@ -144,7 +192,7 @@ export function PaymentDialog({
           </div>
         )}
 
-        <div className="flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3 text-sm">
+        <div className={mode === "paid" ? "flex items-center justify-between rounded-lg bg-muted/60 px-4 py-3 text-sm" : "hidden"}>
           {remaining > 0 ? (
             <span className="text-destructive">{t("Still due")} <strong className="tabular-nums">{org.money(remaining)}</strong></span>
           ) : (
@@ -152,11 +200,11 @@ export function PaymentDialog({
           )}
           <span className="text-2xl font-semibold tabular-nums">{org.money(change)}</span>
         </div>
-        {change > cash && <p className="text-sm text-destructive">Only cash can be over-paid.</p>}
+        {mode === "paid" && change > cash && <p className="text-sm text-destructive">Only cash can be over-paid.</p>}
 
         <DialogFooter>
-          <Button size="lg" className="h-11 w-full text-base" disabled={invalid || pending} onClick={submit}>
-            {pending && <Spinner />} {t("Complete sale")} <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
+          <Button size="lg" className="h-11 w-full text-base" disabled={(mode === "paid" ? invalid : !!udhaarProblem) || pending} onClick={submit}>
+            {pending && <Spinner />} {mode === "udhaar" ? "Save on udhaar" : t("Complete sale")} <Kbd className="ml-2 bg-primary-foreground/20 text-primary-foreground">Enter</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -28,7 +28,15 @@ export const updateBusiness = withAuth("settings:manage", settingsInput.extend({
 });
 
 export const updateReceipt = withAuth("settings:manage", receiptSettingsInput, async (ctx, i) => {
-  await OrgSettings.updateOne({ orgId: ctx.orgId }, { $set: { receipt: { paperWidth: i.paperWidth, header: i.header, footer: i.footer, showHsn: i.showHsn, showUpiQr: i.showUpiQr, upiId: i.upiId }, prefixes: i.prefixes, scanner: i.scanner } });
+  await OrgSettings.updateOne({ orgId: ctx.orgId }, {
+    $set: {
+      "receipt.paperWidth": i.paperWidth, "receipt.header": i.header, "receipt.footer": i.footer, "receipt.showHsn": i.showHsn, "receipt.showUpiQr": i.showUpiQr, "receipt.upiId": i.upiId,
+      ...(i.shopName !== undefined && { "receipt.shopName": i.shopName }),
+      ...(i.bgMode !== undefined && { "receipt.bgMode": i.bgMode }),
+      ...(i.bgText !== undefined && { "receipt.bgText": i.bgText }),
+      prefixes: i.prefixes, scanner: i.scanner,
+    },
+  });
   await audit(ctx, "update", "settings", ctx.orgId, "Updated receipt & numbering settings");
   revalidatePath("/", "layout");
   return null;

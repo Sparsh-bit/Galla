@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FolderTree, Package, Plus, Tags } from "lucide-react";
+import { FolderTree, Package, Plus, Sparkles, Tags } from "lucide-react";
 import { formatQty, pageOf } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
 import { getOrgSettings, requireCtx, allowed } from "@/server/context";
@@ -56,6 +56,11 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
             </Button>
             {canWrite && (
               <>
+                <Button asChild variant="outline">
+                  <Link href="/products/ai">
+                    <Sparkles /> From photo / PDF
+                  </Link>
+                </Button>
                 <Button asChild variant="outline">
                   <Link href="/products/categories">
                     <FolderTree /> Categories

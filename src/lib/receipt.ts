@@ -6,6 +6,8 @@ export interface ReceiptData {
     name: string; legalName: string; address: string; phone: string; email: string; taxId: string; taxMode: "GST" | "VAT" | "NONE";
     logoUrl: string | null; header: string; footer: string; terms: string; upiId: string; showUpiQr: boolean; showHsn: boolean;
     currency: string; locale: string; timezone: string; paperWidth: 58 | 80;
+    /** Faint picture behind the bill (screen and A4 prints; thermal printers print plain text). */
+    bgMode?: "none" | "text" | "logo"; bgText?: string;
   };
   sale: {
     id: string; number: string; kind: "receipt" | "tax_invoice" | "return"; status: string; date: string; cashier: string; location: string;
@@ -19,6 +21,13 @@ export interface ReceiptData {
 }
 
 const METHOD: Record<string, string> = { cash: "Cash", card: "Card", upi: "UPI", credit: "On account", other: "Other" };
+/** What is drawn faintly behind the bill: the chosen words, or the logo; null for a plain bill. */
+export function watermark(d: ReceiptData): { text: string } | { logo: string } | null {
+  if (d.org.bgMode === "text" && d.org.bgText?.trim()) return { text: d.org.bgText.trim() };
+  if (d.org.bgMode === "logo" && d.org.logoUrl) return { logo: d.org.logoUrl };
+  return null;
+}
+
 export const qtyText = (q: number, scale: number) => (scale === 1 ? String(q) : String(+(q / scale).toFixed(3)));
 export const pct = (bp: number) => `${+(bp / 100).toFixed(2)}%`;
 

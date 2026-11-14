@@ -130,6 +130,10 @@ export type SettingsInput = z.input<typeof settingsInput>;
 export const receiptSettingsInput = z
   .object({
     paperWidth: z.union([z.literal(58), z.literal(80)]),
+    // Optional so older apps that don't send them leave the saved values alone.
+    shopName: trimmed(80).optional(),
+    bgMode: z.enum(["none", "text", "logo"]).optional(),
+    bgText: trimmed(40).optional(),
     header: trimmed(300),
     footer: trimmed(300),
     showHsn: z.boolean(),

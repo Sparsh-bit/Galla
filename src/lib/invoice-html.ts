@@ -1,5 +1,5 @@
 import { formatMoney } from "./money";
-import { pct, qtyText, receiptTitle, type ReceiptData } from "./receipt";
+import { pct, qtyText, receiptTitle, watermark, type ReceiptData } from "./receipt";
 import { INDIAN_STATES } from "./schemas";
 
 // A4 tax invoice as a self-contained HTML document (no scripts, every value escaped). The Android
@@ -57,7 +57,9 @@ header{display:flex;justify-content:space-between;gap:24px;border-bottom:1px sol
 table{width:100%;border-collapse:collapse}.items th{background:#f6f6f6;text-align:left;font-size:11px;padding:6px;border-top:1px solid #ddd;border-bottom:1px solid #ddd}.items td{padding:6px;border-bottom:1px solid #eee;vertical-align:top;font-size:11px}
 .sum{display:flex;gap:32px;margin-top:16px}.sum>div:first-child{flex:1}.sum>div:last-child{width:260px}.tl{display:flex;justify-content:space-between;padding:2px 0}.gt{border-top:1px solid #ccc;border-bottom:1px solid #ccc;padding:6px 0;font-size:14px;font-weight:bold}
 .tax th,.tax td{font-size:10.5px;padding:3px 0;border-bottom:1px solid #eee}.tax th{color:#666;text-align:left}.qr{display:flex;align-items:center;gap:12px}.qr svg{width:96px;height:96px}.irn svg{width:110px;height:110px}
-footer{margin-top:48px;display:flex;justify-content:space-between;align-items:flex-end}.sign{text-align:center;border-top:1px solid #ccc;padding-top:4px}</style></head><body>
+footer{margin-top:48px;display:flex;justify-content:space-between;align-items:flex-end}.sign{text-align:center;border-top:1px solid #ccc;padding-top:4px}
+.wm{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(-30deg);font:bold 26mm sans-serif;color:rgba(0,0,0,.07);z-index:0;pointer-events:none;overflow:hidden;word-break:break-word}.wm img{max-width:60%;opacity:.08;filter:grayscale(1)}body>*{position:relative;z-index:1}</style></head><body>
+${(() => { const w = watermark(d); return w ? `<div class="wm" aria-hidden="true">${"text" in w ? esc(w.text) : `<img src="${esc(w.logo)}" alt="">`}</div>` : ""; })()}
 <header><div style="display:flex">${opts.logoUrl ? `<img src="${esc(opts.logoUrl)}" alt="">` : ""}<div><h1>${esc(d.org.legalName || d.org.name)}</h1>${d.org.address ? `<div>${esc(d.org.address)}</div>` : ""}<div>${esc([d.org.phone, d.org.email].filter(Boolean).join(" · "))}</div>${d.org.taxId ? `<div class="b">${gst ? "GSTIN" : "Tax No"}: ${esc(d.org.taxId)}</div>` : ""}</div></div>
 <div class="r"><div style="font-size:17px;font-weight:bold;letter-spacing:.04em">${esc(receiptTitle(d))}</div>${s.status === "void" ? `<div class="red">VOID</div>` : ""}<div>No: <b>${esc(s.number)}</b></div><div>Date: ${esc(s.date)}</div>${s.returnOfNumber ? `<div>Against invoice: ${esc(s.returnOfNumber)}</div>` : ""}</div></header>
 ${s.einvoice ? `<section class="cols irn" style="border-bottom:1px solid #ddd;font-size:10.5px"><div>${s.einvoice.cancelled ? `<div class="red">IRN CANCELLED</div>` : ""}<div><span class="mu">IRN:</span> <span style="word-break:break-all;font-family:monospace">${esc(s.einvoice.irn)}</span></div><div><span class="mu">Ack No:</span> ${esc(s.einvoice.ackNo)} · <span class="mu">Ack Date:</span> ${esc(s.einvoice.ackDt)}</div>${s.einvoice.ewbNo ? `<div><span class="mu">E-way bill:</span> ${esc(s.einvoice.ewbNo)}</div>` : ""}</div>${opts.irnQrSvg ?? ""}</section>` : ""}
