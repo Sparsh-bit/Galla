@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CirclePause, History, Package, Percent, Search, ShoppingCart, Trash2 } from "lucide-react";
+import { CirclePause, Hash, History, Package, Percent, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatQty } from "@/lib/format";
 import { fromMinor, toMinor } from "@/lib/money";
@@ -30,6 +30,8 @@ import { CustomerPicker } from "./customer-picker";
 import { HeldBills } from "./held-bills";
 import { PaymentDialog, type Tender } from "./payment-dialog";
 import { SerialDialog } from "./serial-dialog";
+import { DuplicateDialog } from "./duplicate-dialog";
+import { NumberPad } from "./number-pad";
 import { OfflineStatus } from "@/components/offline/offline-status";
 import { useOfflinePos } from "@/components/offline/use-offline-pos";
 import { isNetworkError } from "@/components/offline/use-online";
@@ -94,6 +96,12 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
   );
   const itemCount = lines.reduce((a, l) => a + (l.hit.scale === 1 ? l.qty : 1), 0);
 
+  const [padOpen, setPadOpen] = useState(false);
+  const [dup, setDup] = useState<VariantHit | null>(null);
+  const dupRef = useRef<VariantHit | null>(null);
+  useEffect(() => {
+    dupRef.current = dup;
+  });
   const [serialFor, setSerialFor] = useState<{ hit: VariantHit; key: string | null; serials: string[] } | null>(null);
 
   const linesRef = useRef(lines);
@@ -137,33 +145,50 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
   };
   const t = useT();
 
-  const handleCode = async (code: string) => {
-      let found: VariantHit | null = null;
-      if (navigator.onLine) {
-        try {
-          const res = await lookupCode({ code, locationId });
-          found = res.ok ? res.data : null;
-        } catch (e) {
-          if (!isNetworkError(e)) {
-            scanFeedback(false);
-            toast.error("Couldn't look up that code. Please try again.");
-            return;
-          }
-          found = offline.lookupLocal(code);
-        }
-      } else found = offline.lookupLocal(code);
-      if (found) {
-        scanFeedback(true);
-        addHit(found);
-        return;
+  /** Finds a product by barcode, SKU or product number, online or from the till's saved copy. */
+  const findCode = async (code: string): Promise<VariantHit | null | "error"> => {
+    if (navigator.onLine) {
+      try {
+        const res = await lookupCode({ code, locationId });
+        return res.ok ? res.data : null;
+      } catch (e) {
+        if (!isNetworkError(e)) return "error";
       }
-      scanFeedback(false);
-      toast.error(`No product with code ${code}`, {
-        action: org.can("products:write") ? { label: "Create", onClick: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`) } : undefined,
-      });
+    }
+    return offline.lookupLocal(code);
   };
 
-  useScanner(handleCode, !payOpen && !done && !serialFor);
+  /**
+   * Adds a code to the bill. `confirmDup` (camera and number pad) asks before adding a product that is
+   * already there; a hardware scanner just counts up, as shop staff expect. `silent`: the camera already beeped.
+   * Resolves to a short message for the camera / pad status line.
+   */
+  const handleCode = async (code: string, opts: { confirmDup?: boolean; silent?: boolean } = {}): Promise<string> => {
+    if (dupRef.current) return ""; // a question is open: ignore further scans until it is answered
+    const found = await findCode(code);
+    if (found === "error") {
+      scanFeedback(false);
+      toast.error("Couldn't look up that code. Please try again.");
+      return "Couldn't look up that code";
+    }
+    if (found) {
+      if (!opts.silent) scanFeedback(true);
+      const label = found.name + (found.variantName ? ` · ${found.variantName}` : "");
+      if (opts.confirmDup && !found.trackSerial && linesRef.current.some((l) => l.hit.variantId === found.variantId)) {
+        setDup(found);
+        return `${label} is already added`;
+      }
+      addHit(found);
+      return `Added: ${label}`;
+    }
+    scanFeedback(false);
+    toast.error(`No product with code ${code}`, {
+      action: org.can("products:write") ? { label: "Create", onClick: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`) } : undefined,
+    });
+    return `No product with code ${code}`;
+  };
+
+  useScanner((code) => void handleCode(code), !payOpen && !done && !serialFor && !padOpen && !dup);
 
   function payload() {
     return {
@@ -359,7 +384,10 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
               <Kbd>F2</Kbd>
             </InputGroupAddon>
           </InputGroup>
-          <CameraScanButton onScan={handleCode} label={t("Camera")} />
+          <CameraScanButton continuous onScan={(code) => handleCode(code, { confirmDup: true, silent: true })} label={t("Camera")} />
+          <Button variant="outline" onClick={() => setPadOpen(true)} aria-label={t("Product number pad")}>
+            <Hash /> <span className="hidden sm:inline">{t("Number")}</span>
+          </Button>
           <PhoneLinkButton />
           <OfflineStatus online={offline.online} pending={offline.pending} syncing={offline.syncing} ready={offline.ready} onSync={offline.sync} />
           <Button variant="outline" onClick={() => setHeldOpen(true)} aria-label="Held bills (F9)" disabled={!offline.online}>
@@ -467,6 +495,30 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
         onKindChange={setKind}
         onPay={pay}
       />
+      <NumberPad
+        open={padOpen}
+        onClose={() => {
+          setPadOpen(false);
+          setTimeout(() => searchRef.current?.focus(), 50);
+        }}
+        peek={async (code) => {
+          const f = await findCode(code);
+          return f && f !== "error" ? f : null;
+        }}
+        onNext={(code) => handleCode(code, { confirmDup: true })}
+        inBill={(id) => lines.filter((l) => l.hit.variantId === id).reduce((a, l) => a + (l.hit.scale === 1 ? l.qty : 1), 0)}
+      />
+      {dup && (
+        <DuplicateDialog
+          hit={dup}
+          qty={lines.filter((l) => l.hit.variantId === dup.variantId).reduce((a, l) => a + (l.hit.scale === 1 ? l.qty : 1), 0)}
+          onAdd={() => {
+            addHit(dup);
+            setDup(null);
+          }}
+          onSkip={() => setDup(null)}
+        />
+      )}
       {serialFor && (
         <SerialDialog
           hit={serialFor.hit}

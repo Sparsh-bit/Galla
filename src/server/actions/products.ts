@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { seesCost } from "@/lib/permissions";
 import { objectId, productInput } from "@/lib/schemas";
@@ -27,6 +28,19 @@ export const saveProduct = withAuth("products:write", z.object({ id: objectId.nu
   const res = id ? await updateProduct(ctx, id, data) : await createProduct(ctx, data);
   revalidatePath("/products");
   return res;
+});
+
+/** The next unused short product number (1, 2, 3 ...) that staff can type on the number pad at the counter. */
+export const nextProductNumber = withAuth("products:read", z.object({}).strict(), async (ctx) => {
+  const rows = await Product.aggregate<{ max: number }>([
+    { $match: { orgId: new mongoose.Types.ObjectId(ctx.orgId) } },
+    { $unwind: "$variants" },
+    { $project: { all: { $concatArrays: [["$variants.sku"], "$variants.barcodes"] } } },
+    { $unwind: "$all" },
+    { $match: { all: { $regex: /^[1-9]\d{0,5}$/ } } }, // short numbers only; long digit strings are real EAN barcodes
+    { $group: { _id: null, max: { $max: { $toInt: "$all" } } } },
+  ]);
+  return { number: String((rows[0]?.max ?? 0) + 1) };
 });
 
 export const archiveProduct = withAuth("products:write", z.object({ id: objectId, active: z.boolean() }).strict(), async (ctx, { id, active }) => {

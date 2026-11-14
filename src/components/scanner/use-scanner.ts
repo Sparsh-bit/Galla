@@ -77,18 +77,32 @@ export function useScanner(onScan: (code: string) => void, enabled = true) {
 }
 
 let audioCtx: AudioContext | null = null;
-/** Short confirmation beep + haptic tick. */
+/**
+ * Scanner-style beep: a loud square-wave tone like a shop barcode machine (two quick pulses for a
+ * good read, one low buzz for "not found"), plus a vibration tick on phones.
+ */
 export function scanFeedback(ok = true) {
   try {
     audioCtx ??= new AudioContext();
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.frequency.value = ok ? 1250 : 320;
-    g.gain.setValueAtTime(0.12, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + (ok ? 0.09 : 0.25));
-    o.connect(g).connect(audioCtx.destination);
-    o.start();
-    o.stop(audioCtx.currentTime + (ok ? 0.1 : 0.26));
+    if (audioCtx.state === "suspended") void audioCtx.resume();
+    const t0 = audioCtx.currentTime;
+    const pulse = (freq: number, start: number, len: number) => {
+      const o = audioCtx!.createOscillator();
+      const g = audioCtx!.createGain();
+      o.type = "square";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t0 + start);
+      g.gain.exponentialRampToValueAtTime(0.7, t0 + start + 0.006);
+      g.gain.setValueAtTime(0.7, t0 + start + len - 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + len);
+      o.connect(g).connect(audioCtx!.destination);
+      o.start(t0 + start);
+      o.stop(t0 + start + len + 0.01);
+    };
+    if (ok) {
+      pulse(2400, 0, 0.09);
+      pulse(2900, 0.11, 0.11);
+    } else pulse(300, 0, 0.35);
   } catch {}
   // Browsers reject vibration before the first user tap (and log an error), so check first.
   if ((navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive) navigator.vibrate?.(ok ? 40 : [60, 40, 60]);

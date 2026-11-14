@@ -5,7 +5,7 @@ import { ImagePlus, Layers, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { fromMinor, toMinor } from "@/lib/money";
 import type { ProductInput } from "@/lib/schemas";
-import { saveProduct } from "@/server/actions/products";
+import { nextProductNumber, saveProduct } from "@/server/actions/products";
 import { FormField } from "@/components/app/form-field";
 import { useOrg } from "@/components/app/org-context";
 import { SelectField } from "@/components/app/select-field";
@@ -276,7 +276,7 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
                       <Input value={r.sku} onChange={(e) => setRow(r.key, { sku: e.target.value })} placeholder="Auto" maxLength={64} className="font-mono" />
                     </FormField>
                     <FormField label="Barcode / product no." error={err(`variants.${i}.barcodes.0`)} className="col-span-2 @md:col-span-1">
-                      <BarcodeInput value={r.barcodes} onChange={(e) => setRow(r.key, { barcodes: e.target.value })} onScan={(code) => setRow(r.key, { barcodes: code })} />
+                      <BarcodeInput value={r.barcodes} onChange={(e) => setRow(r.key, { barcodes: e.target.value })} onScan={(code) => setRow(r.key, { barcodes: code })} onPickNumber={async () => { const n = await nextProductNumber({}); if (n.ok) setRow(r.key, { barcodes: n.data.number }); else toast.error(n.error); }} />
                     </FormField>
                     {!isEdit && (
                       <FormField label={`Opening stock (${unit.code})`} className="col-span-2 @md:col-span-1">
@@ -417,10 +417,11 @@ function toMinorSafe(s: string) {
 }
 
 /** Barcode box + camera button. Props (incl. FormField's id/aria) go to the input so the label stays linked. */
-export function BarcodeInput({ onScan, ...props }: React.ComponentProps<typeof Input> & { onScan: (code: string) => void }) {
+export function BarcodeInput({ onScan, onPickNumber, ...props }: React.ComponentProps<typeof Input> & { onScan: (code: string) => void; onPickNumber?: () => void }) {
   return (
     <div className="flex gap-2">
       <Input data-scan-field placeholder="Scan or type" className="font-mono" {...props} />
+      {onPickNumber && <Button type="button" variant="outline" onClick={onPickNumber} title="Give this product the next free short number, to type on the number pad at the counter">No.</Button>}
       <CameraScanButton label="Scan" onScan={onScan} />
     </div>
   );

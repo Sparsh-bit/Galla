@@ -16,6 +16,15 @@ const PAGES = [
 // One sign-in per device: the per-IP sign-in limit (30 / 15 min) is shared by the whole run.
 test("pages, a sale and a receipt", async ({ page }) => {
   test.setTimeout(300_000);
+
+  await test.step("public pages fit the screen", async () => {
+    for (const path of ["/", "/sign-in", "/privacy"]) {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `${path} scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(1);
+    }
+  });
   await signIn(page, OWNER.email, OWNER.password);
 
   await test.step("every page renders without sideways scrolling", async () => {
@@ -39,11 +48,20 @@ test("pages, a sale and a receipt", async ({ page }) => {
     await expect(page.getByRole("dialog", { name: "Sale complete" })).toBeVisible();
   });
 
+  await test.step("the number pad fits the screen, Next included", async () => {
+    await page.goto("/pos");
+    await page.getByRole("button", { name: "Product number pad" }).click();
+    const pad = page.getByRole("dialog", { name: /Product number/ });
+    await expect(pad.getByRole("button", { name: /Next/ })).toBeInViewport();
+    await expect(pad.getByRole("button", { name: "9", exact: true })).toBeInViewport();
+    await page.keyboard.press("Escape");
+  });
+
   await test.step("the sale page opens and fits the screen", async () => {
     await page.goto("/sales");
     await page.waitForLoadState("networkidle");
-    await page.getByRole("link", { name: /INV\// }).first().click();
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("INV/");
+    await page.getByRole("link", { name: /^(INV|S)\// }).first().click();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText(/^(INV|S)\//);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   });
