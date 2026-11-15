@@ -34,6 +34,8 @@ async function load(withKey = true) {
   if (withKey) process.env.GROQ_API_KEY = "gsk_test";
   return import("@/server/services/ai-chat");
 }
+type Call = [string, { body: string }];
+const chatCall = (m: { mock: { calls: unknown[] } }) => (m.mock.calls as unknown as Call[]).find((c) => String(c[0]).includes("chat/completions"))!;
 const ctx = (role = "owner") => ({ orgId: "a".repeat(24), orgName: "Sharma Kirana", role }) as never;
 
 describe("Ask Galla", () => {
@@ -48,8 +50,8 @@ describe("Ask Galla", () => {
     vi.stubGlobal("fetch", fetchMock);
     const out = await chatReply(ctx(), [{ role: "user", content: "aaj kitni sale hui?" }]);
     expect(out).toBe("Aaj ₹12,345 ki bikri hui, 12 bills.");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
+    expect((fetchMock.mock.calls as unknown as Call[]).filter((c) => String(c[0]).includes("chat/completions"))).toHaveLength(1);
+    const body = JSON.parse(chatCall(fetchMock)[1].body);
     expect(body.tools).toBeUndefined();
     const system = body.messages[0].content as string;
     expect(system).toContain("Sharma Kirana");
@@ -63,7 +65,7 @@ describe("Ask Galla", () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: "ok" } }] }) }));
     vi.stubGlobal("fetch", fetchMock);
     await chatReply(ctx("cashier"), [{ role: "user", content: "who owes money?" }]);
-    const system = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body).messages[0].content as string;
+    const system = JSON.parse(chatCall(fetchMock)[1].body).messages[0].content as string;
     expect(system).toContain("not allowed"); // the dues section says the role may not see it
     expect(system).not.toContain("profit");
   });

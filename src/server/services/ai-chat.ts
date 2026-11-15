@@ -4,6 +4,7 @@ import { formatMoney } from "@/lib/money";
 import { allowed, AppError, getOrgSettings, type Ctx } from "../context";
 import { Types } from "../models";
 import { balances, expiringBatches, lowStock, salesByProduct, salesTotals, startOfDay } from "./reports";
+import { groqTextModel, stripThinking } from "./groq-models";
 import { searchVariants } from "./products";
 import { StockLevel } from "../models";
 
@@ -153,18 +154,18 @@ ${JSON.stringify(data).slice(0, 14000)}`;
     res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model: env.GROQ_TEXT_MODEL, temperature: 0.2, max_tokens: 700, messages: [{ role: "system", content: system }, ...history.map((h) => ({ role: h.role, content: h.content }))] }),
+      body: JSON.stringify({ model: await groqTextModel(), temperature: 0.2, max_tokens: 700, messages: [{ role: "system", content: system }, ...history.map((h) => ({ role: h.role, content: h.content }))] }),
       signal: AbortSignal.timeout(45_000),
     });
   } catch {
     throw new AppError("INVALID", "The assistant could not be reached. Check the internet and try again.");
   }
   if (!res.ok) {
-    console.error("[ai-chat] Groq returned", res.status, env.GROQ_TEXT_MODEL, (await res.text().catch(() => "")).slice(0, 400));
+    console.error("[ai-chat] Groq returned", res.status, (await res.text().catch(() => "")).slice(0, 400));
     if (res.status === 401 || res.status === 403) throw new AppError("INVALID", keyProblem);
     if (res.status === 404 || res.status === 400) throw new AppError("INVALID", "The AI model is not available. Ask Concilio Solutions to update GROQ_TEXT_MODEL.");
     throw new AppError("INVALID", res.status === 429 ? "The assistant is busy. Try again in a minute." : "The assistant could not answer. Please try again.");
   }
   const json = (await res.json()) as { choices?: { message?: { content?: string | null } }[] };
-  return json.choices?.[0]?.message?.content?.trim() || "I could not find an answer. Please ask in a different way.";
+  return stripThinking(json.choices?.[0]?.message?.content ?? "") || "I could not find an answer. Please ask in a different way.";
 }

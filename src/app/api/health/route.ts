@@ -2,6 +2,7 @@ import { access, constants, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { env } from "@/env";
 import { connectDb } from "@/server/db";
+import { chooseModel } from "@/server/services/groq-models";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,9 @@ async function aiStatus(): Promise<string> {
     if (!r.ok) value = `groq key REJECTED (${r.status})`;
     else {
       const ids = ((await r.json()) as { data?: { id: string }[] }).data?.map((m) => m.id) ?? [];
-      value = ids.includes(env.GROQ_TEXT_MODEL) ? "groq ok" : `groq key ok but model "${env.GROQ_TEXT_MODEL}" not found`;
+      const text = chooseModel(ids, env.GROQ_TEXT_MODEL, "text");
+      const vision = chooseModel(ids, env.GROQ_MODEL, "vision");
+      value = ids.includes(text) ? `groq ok (chat: ${text}; photos: ${ids.includes(vision) ? vision : "no vision model available"})` : "groq key ok but no usable chat model found";
     }
   } catch {
     value = "groq unreachable";

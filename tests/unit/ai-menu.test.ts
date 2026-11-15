@@ -69,7 +69,7 @@ describe("AI menu reader", () => {
     }));
     vi.stubGlobal("fetch", fetchMock);
     const { rows } = await readMenu(await png(), "image/png");
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string>; body: string }];
+    const [url, init] = (fetchMock.mock.calls as unknown as [string, { headers: Record<string, string>; body: string }][]).find((c) => String(c[0]).includes("chat/completions"))!;
     expect(url).toBe("https://api.groq.com/openai/v1/chat/completions");
     expect(init.headers.authorization).toBe("Bearer gsk_test");
     const body = JSON.parse(init.body);

@@ -5,6 +5,7 @@ import { env } from "@/env";
 import { AI_MAX_BYTES, AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
 import { UNITS } from "@/lib/units";
 import { AppError } from "../context";
+import { groqTextModel, groqVisionModel } from "./groq-models";
 
 const MODEL = "claude-sonnet-5-5";
 const UNIT_CODES = UNITS.map((u) => u.code);
@@ -67,7 +68,7 @@ const JSON_SHAPE = `Answer with JSON only, exactly in this shape (no other text)
 /** Groq (OpenAI-compatible): a vision model reads photos; PDFs are read as text, then structured by a text model. */
 async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[]; note: string }> {
   let content: unknown;
-  let model = env.GROQ_MODEL;
+  let model = await groqVisionModel();
   if (mime === "application/pdf") {
     if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new AppError("INVALID", "That file is not a valid PDF.");
     let pdfText = "";
@@ -78,7 +79,7 @@ async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[
       throw new AppError("INVALID", "That PDF could not be read. Try a photo of the menu instead.");
     }
     if (pdfText.length < 20) throw new AppError("INVALID", "This PDF is a scanned picture with no text. Take a photo of the menu instead and use that.");
-    model = env.GROQ_TEXT_MODEL;
+    model = await groqTextModel();
     content = `${PROMPT}\n\n${JSON_SHAPE}\n\nDocument text:\n"""\n${pdfText.slice(0, 60_000)}\n"""`;
   } else {
     let jpeg: Buffer;
