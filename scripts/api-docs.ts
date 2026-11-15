@@ -8,11 +8,12 @@ const SECTIONS: [string, string[]][] = [
   ["Businesses", ["businesses"]],
   ["Dashboard & reports", ["dashboard", "reports"]],
   ["Products", ["products", "variants", "categories", "taxRates", "locations"]],
-  ["Inventory", ["stock", "serials"]],
+  ["Inventory", ["stock", "serials", "inventory"]],
   ["Point of sale & sales", ["sales", "heldBills", "pos", "scanSessions"]],
   ["Customers, suppliers, khata", ["customers", "suppliers", "parties", "ledger", "khata"]],
   ["Purchases", ["purchases", "purchaseBills"]],
   ["Settings, team, audit, import", ["settings", "members", "audit", "imports"]],
+  ["AI helpers (menu reader and the Ask Galla assistant)", ["ai"]],
 ];
 
 const names = Object.keys(API_ROUTES) as RouteName[];

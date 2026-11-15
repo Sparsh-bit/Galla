@@ -43,7 +43,7 @@ export function Assistant() {
         <Sparkles className="size-4 text-primary" /> <span className="hidden sm:inline">Ask Galla</span>
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+        <SheetContent side="right" className="flex h-dvh w-full flex-col gap-0 p-0 sm:max-w-md">
           <SheetHeader className="border-b p-4">
             <SheetTitle className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /> Ask Galla</SheetTitle>
             <SheetDescription>Ask about today&apos;s sales, stock, who owes you, or how to do something. It only reads; it never changes anything.</SheetDescription>
@@ -61,8 +61,8 @@ export function Assistant() {
             {busy && <div className="mr-8 flex items-center gap-2 rounded-2xl bg-muted px-3 py-2 text-sm text-muted-foreground"><Spinner /> Thinking…</div>}
             <div ref={end} />
           </div>
-          <form className="flex gap-2 border-t p-3" onSubmit={(e) => { e.preventDefault(); void send(text); }}>
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask in English, Hindi or Hinglish" maxLength={2000} aria-label="Your question" className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <form className="flex gap-2 border-t p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" onSubmit={(e) => { e.preventDefault(); void send(text); }}>
+            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask in English, Hindi or Hinglish" maxLength={2000} aria-label="Your question" className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm" />
             <Button type="submit" size="icon" className="size-10" disabled={busy || !text.trim()} aria-label="Send"><Send /></Button>
           </form>
         </SheetContent>

@@ -125,6 +125,7 @@ Generated from `src/lib/api/routes.ts` by `npm run api:docs`. The name column is
 | `POST` | `/api/v1/stock/adjustments` | `stock.adjust` | Adjust stock with a reason. |
 | `POST` | `/api/v1/stock/transfers` | `stock.transfer` | Transfer stock between locations. |
 | `POST` | `/api/v1/stock/counts` | `stock.count` | Post a stock count. |
+| `GET` | `/api/v1/inventory/reorder` | `inventory.reorder` | Low-stock items grouped by supplier with suggested order quantities. |
 
 ### Point of sale & sales
 
@@ -206,3 +207,11 @@ Generated from `src/lib/api/routes.ts` by `npm run api:docs`. The name column is
 | `GET` | `/api/v1/audit` | `audit` | Audit log (?entity, ?q, ?page). |
 | `POST` | `/api/v1/imports/preview` | `imports.preview` | Preview an Excel/CSV import (multipart: kind, file). |
 | `POST` | `/api/v1/imports` | `imports.run` | Run an Excel/CSV import (multipart: kind, file). |
+
+### AI helpers (menu reader and the Ask Galla assistant)
+
+| Method | Path | Name | What it does |
+|---|---|---|---|
+| `POST` | `/api/v1/ai/menu` | `ai.menu` | Read a menu / price list from a photo or PDF into draft product rows (multipart: file). Nothing is saved. |
+| `POST` | `/api/v1/ai/chat` | `ai.chat` | Ask Galla: a read-only assistant ({ messages: [{ role, content }] } -> { reply }). |
+| `POST` | `/api/v1/ai/menu/products` | `ai.addProducts` | Save reviewed menu rows as products. |
