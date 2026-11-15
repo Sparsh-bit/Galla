@@ -33,5 +33,5 @@ test("a linked phone scans on every screen and chooses sale or product", async (
   await expect(linked).toHaveCount(2); // header + POS toolbar
   await linked.last().click();
   await page.getByRole("button", { name: "Unlink phone" }).click();
-  expect((await push("here")).status()).toBe(410);
+  await expect.poll(async () => (await push("here")).status(), { message: "the link ends on the server" }).toBe(410);
 });

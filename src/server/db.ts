@@ -1,6 +1,7 @@
 import "server-only";
 import mongoose from "mongoose";
 import { env } from "@/env";
+import { runMigrations } from "./services/migrations";
 
 // Operator injection is prevented by strict Zod parsing at every entry point (inputs are
 // always strings/numbers before they reach a filter); global sanitizeFilter would also
@@ -17,6 +18,9 @@ export function connectDb(): Promise<typeof mongoose> {
     socketTimeoutMS: 45000,
     maxIdleTimeMS: 5 * 60_000,
     retryWrites: true,
+  }).then((m) => {
+    void runMigrations(); // one-time data fixes; never blocks or fails a request
+    return m;
   }).catch((err) => {
     g.__mongoose = undefined;
     throw err;

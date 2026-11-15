@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { toBuffer } from "bwip-js/node";
 import { MongoClient } from "mongodb";
@@ -17,6 +18,8 @@ export default async function globalSetup() {
   await client.db().dropDatabase();
   await client.close();
   await rm(path.join(dataDir, "mail.log"), { force: true });
+  await mkdir(dataDir, { recursive: true });
+  for (const f of readdirSync(dataDir).filter((n) => n.startsWith("session-"))) await rm(path.join(dataDir, f), { force: true }); // saved sign-ins belong to one run
   const nic = await startMockNic(MOCK_NIC_PORT);
   const groq = await startMockGroq(4556);
   await mkdir(dataDir, { recursive: true });

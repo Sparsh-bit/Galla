@@ -75,7 +75,9 @@ export default async function ProductPage({ params }: PageProps<"/products/[id]"
             <CardTitle>Stock by location</CardTitle>
           </CardHeader>
           <CardContent>
-            {byLocation.size === 0 ? (
+            {p.trackStock === false ? (
+              <p className="text-sm text-muted-foreground">No stock is kept for this item (it has no barcode), so it can always be sold. Add a barcode in Edit to keep stock.</p>
+            ) : byLocation.size === 0 ? (
               <p className="text-sm text-muted-foreground">No stock recorded yet.</p>
             ) : (
               <ul className="divide-y text-sm">

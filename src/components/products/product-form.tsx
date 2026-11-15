@@ -24,6 +24,7 @@ import { useScanner } from "@/components/scanner/use-scanner";
 export { UNITS } from "@/lib/units";
 import { UNITS } from "@/lib/units";
 import { uploadImage } from "@/lib/upload-image";
+import { isRealBarcode } from "@/lib/barcodes";
 
 interface Row {
   key: string;
@@ -69,8 +70,8 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
   const [unitCode, setUnitCode] = useState(product?.unitCode ?? "pcs");
   const [trackBatch, setTrackBatch] = useState(product?.trackBatch ?? false);
   const [trackSerial, setTrackSerial] = useState(product?.trackSerial ?? false);
-  // Stock is kept only for items that have a barcode. Menu items and services: switch off, and they can always be sold.
-  const [trackStock, setTrackStock] = useState(product?.trackStock ?? true);
+  // Stock is kept only for items that have a real barcode (scanned or typed). No barcode: no stock, always sellable.
+  const [keepStock, setKeepStock] = useState(product?.trackStock ?? true);
   const [warranty, setWarranty] = useState(product?.warrantyMonths ? String(product.warrantyMonths) : "");
   const [reorder, setReorder] = useState(String(product?.reorderLevel ?? ""));
   const [images, setImages] = useState<string[]>(product?.images ?? []);
@@ -82,6 +83,9 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
     ? product.variants.map((v) => blankRow({ id: v.id, name: v.name ?? "", attributes: v.attributes ?? [], sku: v.sku ?? "", barcodes: (v.barcodes ?? []).join(", "), cost: m(v.costPrice), price: m(v.salePrice), mrp: m(v.mrp), active: v.active ?? true }))
     : [blankRow({ barcodes: initialBarcode })];
   const [rows, setRows] = useState<Row[]>(initialRows);
+  const hasBarcode = rows.some((r) => r.barcodes.split(",").some((b) => isRealBarcode(b)));
+  // Batch and serial items always keep stock; otherwise stock needs a real barcode and the switch on.
+  const trackStock = trackSerial || trackBatch || (hasBarcode && keepStock);
   const [hasVariants, setHasVariants] = useState(initialRows.length > 1 || !!initialRows[0].attributes.length);
   const [attrs, setAttrs] = useState<{ name: string; values: string }[]>(() => {
     if (!product || !hasVariants) return [{ name: "Size", values: "" }];
@@ -363,29 +367,31 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
               <FormField label="Unit">
                 <SelectField value={unitCode} onValueChange={setUnitCode} options={UNITS.filter((u) => !trackSerial || u.scale === 1).map((u) => [u.code, u.label] as const)} disabled={isEdit} />
               </FormField>
-              <FormField label="Low stock alert at" description="Shows on the dashboard and in the Reorder list when stock falls to this level.">
-                <Input inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value.replace(/\D/g, ""))} placeholder="0" />
-              </FormField>
+              {trackStock && (
+                <FormField label="Low stock alert at" description="Shows on the dashboard and in the Reorder list when stock falls to this level.">
+                  <Input inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value.replace(/\D/g, ""))} placeholder="0" />
+                </FormField>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="trackstock" className="flex flex-col items-start gap-0.5 font-normal">
                   Keep stock of this item
-                  <span className="text-xs text-muted-foreground">Turn off for items with no barcode, like menu items or services: no stock is kept and they can always be sold.</span>
+                  <span className="text-xs text-muted-foreground">{hasBarcode || trackBatch || trackSerial ? "Stock is kept for items with a barcode. Turn off for a service that has one." : "No barcode, so no stock is kept and this item can always be sold. Scan or type a barcode above to keep stock."}</span>
                 </Label>
-                <Switch id="trackstock" checked={trackStock} onCheckedChange={(v) => { setTrackStock(v); if (!v) { setTrackBatch(false); setTrackSerial(false); } }} />
+                <Switch id="trackstock" checked={trackStock} disabled={!hasBarcode || trackBatch || trackSerial} onCheckedChange={(v) => setKeepStock(v)} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="batch" className="flex flex-col items-start gap-0.5 font-normal">
                   Track batches & expiry
                   <span className="text-xs text-muted-foreground">{org.has("batches") ? "For medicines, food and cosmetics." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit || !trackStock || !org.has("batches")} />
+                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit || !org.has("batches")} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="serial" className="flex flex-col items-start gap-0.5 font-normal">
                   Track serial numbers / IMEI
                   <span className="text-xs text-muted-foreground">{org.has("serials") ? "Phones, electronics, appliances. Each unit is scanned in and out." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit || !trackStock || !org.has("serials")} />
+                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit || !org.has("serials")} />
               </div>
               {trackSerial && (
                 <FormField label="Warranty (months)" optional description="Shown on serial lookups so you can check warranty claims.">

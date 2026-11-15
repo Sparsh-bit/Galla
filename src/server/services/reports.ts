@@ -141,8 +141,8 @@ export async function stockValuation(ctx: Ctx, locationId?: string) {
     { $match: match },
     { $group: { _id: "$variantId", qty: { $sum: "$qty" }, productId: { $first: "$productId" } } },
   ]);
-  const products = await Product.find({ orgId: ctx.orgId, _id: { $in: [...new Set(rows.map((r) => String(r.productId)))] } }, { name: 1, unit: 1, variants: 1 }).lean();
-  const byVariant = new Map(products.flatMap((p) => p.variants.map((v) => [String(v._id), { p, v }] as const)));
+  const products = await Product.find({ orgId: ctx.orgId, _id: { $in: [...new Set(rows.map((r) => String(r.productId)))] } }, { name: 1, unit: 1, variants: 1, trackStock: 1 }).lean();
+  const byVariant = new Map(products.filter((p) => p.trackStock !== false).flatMap((p) => p.variants.map((v) => [String(v._id), { p, v }] as const)));
   const items = rows
     .map((r) => {
       const hit = byVariant.get(String(r._id));

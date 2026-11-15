@@ -2,6 +2,7 @@ import "server-only";
 import ExcelJS from "exceljs";
 import Papa from "papaparse";
 import { normalizeHeader, parsePartyRows, parseProductRows, type ImportKind, type ProductRow, type RawRow, type RowError } from "@/lib/import";
+import { isRealBarcode } from "@/lib/barcodes";
 import { AppError, type Ctx } from "../context";
 import { Category, Location, OrgSettings, Party, Product, TaxRate, Types } from "../models";
 import { createProduct } from "./products";
@@ -133,7 +134,7 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[], op
         }
         await createProduct(ctx, {
           name: first.name, description: "", brand: first.brand, categoryId: await categoryId(first.category), unitCode: first.unit, unitScale: first.scale, hsn: first.hsn,
-          taxRateId: await rateId(first.taxRateBp), priceIncludesTax: settings?.pricesIncludeTax ?? true, trackBatch: false, trackSerial: false, trackStock: opts.trackStock ?? true, warrantyMonths: 0, reorderLevel: first.reorder, images: [], active: true,
+          taxRateId: await rateId(first.taxRateBp), priceIncludesTax: settings?.pricesIncludeTax ?? true, trackBatch: false, trackSerial: false, trackStock: opts.trackStock ?? group.some((r) => isRealBarcode(r.barcode)), warrantyMonths: 0, reorderLevel: first.reorder, images: [], active: true,
           openingLocationId: loc ? String(loc._id) : undefined,
           variants: group.map((r) => {
             const n = !r.barcode && opts.shortNumbers ? takeNumber() : null;

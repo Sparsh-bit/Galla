@@ -79,7 +79,7 @@ async function runTool(ctx: Ctx, name: string, a: Args): Promise<unknown> {
       const ids = hits.map((h) => new Types.ObjectId(h.variantId));
       const levels = ids.length ? await StockLevel.aggregate<{ _id: Types.ObjectId; qty: number }>([{ $match: { orgId: new Types.ObjectId(ctx.orgId), variantId: { $in: ids } } }, { $group: { _id: "$variantId", qty: { $sum: "$qty" } } }]) : [];
       const qty = new Map(levels.map((l) => [String(l._id), l.qty]));
-      return hits.map((h) => ({ product: [h.name, h.variantName].filter(Boolean).join(" - "), price: m(h.salePrice), in_stock: +((qty.get(h.variantId) ?? 0) / (h.scale || 1)).toFixed(3) }));
+      return hits.map((h) => ({ product: [h.name, h.variantName].filter(Boolean).join(" - "), price: m(h.salePrice), in_stock: h.trackStock === false ? "not tracked (no barcode): always available" : +((qty.get(h.variantId) ?? 0) / (h.scale || 1)).toFixed(3) }));
     }
     case "expiring_soon": {
       if (!allowed(ctx, "stock:read")) return NOT_ALLOWED;

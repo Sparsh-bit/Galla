@@ -31,13 +31,33 @@ export async function lastMailLink(to: string, subject?: RegExp): Promise<string
   throw new Error(`No email for ${to}`);
 }
 
+// The server allows 30 sign-ins per 15 minutes per address. A run with this many tests would use them all up, so a
+// user signs in once and later tests reuse that session (saved per user for this run only).
+const sessions = (email: string) => path.resolve(process.env.E2E_DATA_DIR ?? ".data/e2e", `session-${email.replace(/[^a-z0-9]/gi, "_")}.json`);
+
 export async function signIn(page: Page, email: string, password: string) {
+  const file = sessions(email);
+  try {
+    const saved = JSON.parse(await readFile(file, "utf8")) as { cookies: unknown[] };
+    await page.context().addCookies(saved.cookies as never);
+    await page.goto("/dashboard");
+    if (/\/(dashboard|onboarding)/.test(new URL(page.url()).pathname)) {
+      await page.waitForLoadState("networkidle");
+      return;
+    }
+  } catch {
+    /* no saved session yet, or it no longer works: sign in below */
+  }
+  await page.context().clearCookies();
   await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/(dashboard|onboarding)/);
   await page.waitForLoadState("networkidle");
+  const { writeFile, mkdir } = await import("node:fs/promises");
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, JSON.stringify({ cookies: await page.context().cookies() }));
 }
 
 export async function signUp(page: Page, user: { name: string; email: string; password: string }, next?: string) {

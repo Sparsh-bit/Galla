@@ -11,7 +11,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { Spinner } from "@/components/ui/spinner";
 
 /** Search-as-you-type product variant picker. */
-export function ProductPicker({ onPick, locationId, placeholder = "Search products to add…", autoFocus }: { onPick: (hit: VariantHit) => void; locationId?: string; placeholder?: string; autoFocus?: boolean }) {
+export function ProductPicker({ onPick, locationId, placeholder = "Search products to add…", autoFocus, stockOnly }: { onPick: (hit: VariantHit) => void; stockOnly?: boolean; locationId?: string; placeholder?: string; autoFocus?: boolean }) {
   const org = useOrg();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -19,7 +19,8 @@ export function ProductPicker({ onPick, locationId, placeholder = "Search produc
     const res = await searchProducts({ q, locationId });
     return res.ok ? res.data : [];
   });
-  const hits = data ?? [];
+  // stockOnly: screens that change stock (adjust, count, transfer) only offer items that keep stock.
+  const hits = (data ?? []).filter((h) => !stockOnly || h.trackStock !== false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

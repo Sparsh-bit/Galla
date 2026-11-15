@@ -117,7 +117,7 @@ export function StockEditor({ mode, locations }: { mode: Mode; locations: { id: 
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex gap-2">
-            <div className="flex-1"><ProductPicker onPick={addHit} locationId={locationId} placeholder="Search or scan a product…" /></div>
+            <div className="flex-1"><ProductPicker stockOnly onPick={addHit} locationId={locationId} placeholder="Search or scan a product…" /></div>
             <CameraScanButton onScan={onCode} />
           </div>
           {rows.length === 0 ? (

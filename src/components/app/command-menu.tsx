@@ -39,7 +39,7 @@ export function CommandMenu() {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-9 justify-start gap-2 px-2 text-muted-foreground sm:w-56">
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="w-9 justify-start gap-2 px-2 text-muted-foreground sm:w-44 xl:w-56">
         <Search className="size-4" />
         <span className="hidden sm:inline">Search…</span>
         <Kbd className="ml-auto hidden sm:inline-flex">⌘K</Kbd>

@@ -40,7 +40,7 @@ export function Assistant() {
   return (
     <>
       <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)} aria-label="Ask Galla, the assistant" className="gap-1.5">
-        <Sparkles className="size-4 text-primary" /> <span className="hidden sm:inline">Ask Galla</span>
+        <Sparkles className="size-4 text-primary" /> <span className="hidden xl:inline">Ask Galla</span>
       </Button>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="flex h-dvh w-full flex-col gap-0 p-0 sm:max-w-md">

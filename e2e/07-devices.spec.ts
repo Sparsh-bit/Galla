@@ -11,6 +11,8 @@ const PAGES = [
   "/purchases", "/purchases/new", "/customers", "/khata", "/suppliers", "/reports", "/import", "/account",
   "/settings", "/settings/business", "/settings/taxes", "/settings/locations", "/settings/receipt", "/settings/devices",
   "/settings/members", "/settings/audit", "/settings/einvoice",
+  // screens added later: every one must fit every screen size too
+  "/inventory/reorder", "/products/ai", "/settings/receipt",
 ];
 
 // One sign-in per device: the per-IP sign-in limit (30 / 15 min) is shared by the whole run.

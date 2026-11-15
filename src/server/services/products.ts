@@ -96,7 +96,13 @@ export async function updateProduct(ctx: Ctx, id: string, input: Input) {
       const stock = await stockByVariant(ctx, existing.variants.map((v) => String(v._id)));
       if ([...stock.values()].some((q) => q !== 0)) throw new AppError("CONFLICT", "The unit, batch or serial tracking can only be changed while the product has no stock.");
     }
-    existing.set({ ...fields(input), variants });
+    // An item that holds stock keeps being tracked until its stock is gone (the stock is not lost by an edit).
+    let trackStock = input.trackStock !== false;
+    if (!trackStock && existing.trackStock !== false) {
+      const held = await stockByVariant(ctx, existing.variants.map((v) => String(v._id)));
+      if ([...held.values()].some((q) => q !== 0)) trackStock = true;
+    }
+    existing.set({ ...fields(input), trackStock, variants });
     await existing.save({ session });
     await audit(ctx, "update", "product", id, `Updated product ${input.name}`, undefined, session);
     return { id };

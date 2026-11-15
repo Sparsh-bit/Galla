@@ -6,6 +6,7 @@ test("reorder list: a low item appears, quantities can be edited, the WhatsApp m
   await page.goto("/products/new");
   await page.getByLabel("Product name").fill("E2E Reorder Soap");
   await page.getByLabel("Selling price", { exact: true }).fill("30");
+  await page.getByPlaceholder("Scan or type").first().fill("8908007654321"); // stock is kept only for items with a barcode
   await page.getByLabel(/Opening stock/).fill("2");
   await page.getByLabel(/Low stock alert/).fill("10");
   await page.getByRole("button", { name: "Create product" }).click();

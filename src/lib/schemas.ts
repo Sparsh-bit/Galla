@@ -1,3 +1,4 @@
+import { hasRealBarcode } from "./barcodes";
 import { z } from "zod";
 
 export const objectId = z.string().regex(/^[a-f0-9]{24}$/i, "Invalid id");
@@ -47,7 +48,8 @@ export const productInput = z
     priceIncludesTax: z.boolean().default(true),
     trackBatch: z.boolean().default(false),
     trackSerial: z.boolean().default(false),
-    trackStock: z.boolean().default(true),
+    // Only items with a real barcode keep stock; the server decides from the barcodes (see lib/barcodes).
+    trackStock: z.boolean().optional(),
     warrantyMonths: z.number().int().min(0).max(600).default(0),
     reorderLevel: z.number().int().min(0).max(1e9).default(0),
     // Uploads return /api/org-files/<business>/<file>; older images are /api/files/<file>.
@@ -57,9 +59,10 @@ export const productInput = z
     openingLocationId: objectId.optional(),
   })
   .strict()
-  .refine((p) => p.trackStock || !(p.trackSerial || p.trackBatch), { message: "Batches and serial numbers need stock tracking to be on", path: ["trackStock"] })
   .refine((p) => !(p.trackSerial && p.trackBatch), { message: "Choose either batch tracking or serial numbers, not both", path: ["trackSerial"] })
-  .refine((p) => !(p.trackSerial && p.unitScale !== 1), { message: "Serial-numbered items must be counted in whole units", path: ["trackSerial"] });
+  .refine((p) => !(p.trackSerial && p.unitScale !== 1), { message: "Serial-numbered items must be counted in whole units", path: ["trackSerial"] })
+  // The rule: stock only for items with a real barcode (batch and serial items always keep stock).
+  .transform((p) => ({ ...p, trackStock: p.trackSerial || p.trackBatch ? true : hasRealBarcode(p.variants) && (p.trackStock ?? true) }));
 export type ProductInput = z.input<typeof productInput>;
 
 export const partyInput = z

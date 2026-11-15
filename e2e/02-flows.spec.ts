@@ -45,8 +45,9 @@ test("batch-tracked product: opening stock with batch number and expiry", async 
   await page.goto("/products/new");
   await page.getByLabel("Product name").fill("E2E Chips 50g");
   await page.getByLabel("Selling price", { exact: true }).fill("20");
-  await page.getByLabel(/Opening stock/).fill("20");
+  // Batch items always keep stock, so the opening-stock field appears once batches are on.
   await page.getByRole("switch", { name: /Track batches/ }).click();
+  await page.getByLabel(/Opening stock/).fill("20");
   await expect(page.getByLabel(/Opening stock/)).toHaveValue("20");
   await page.getByLabel("Batch no.").fill("B2610");
   await page.getByLabel(/Expiry date/).fill("2027-03-31");
