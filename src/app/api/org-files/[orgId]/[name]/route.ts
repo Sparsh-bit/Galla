@@ -5,8 +5,9 @@ import { loadCtx } from "@/server/context";
 
 const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp" };
 const WIDTHS = new Set([64, 96, 128, 192, 256, 384, 512]);
-// File names are random and never reused, so a browser or phone may keep an image for good. Private: signed-in staff only.
-const CACHE = "private, max-age=31536000, immutable";
+// File names are random and never reused, so a browser may keep an image for a day instead of downloading it for every
+// list. Private (never a shared cache), and not longer: these are the business's own photos.
+const CACHE = "private, max-age=86400";
 
 export async function GET(req: Request, { params }: RouteContext<"/api/org-files/[orgId]/[name]">) {
   const { orgId, name } = await params;

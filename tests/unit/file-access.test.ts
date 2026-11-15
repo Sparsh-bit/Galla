@@ -48,7 +48,7 @@ describe("tenant-scoped image delivery", () => {
       params: Promise.resolve({ orgId: current.orgId, name: "b".repeat(32) + ".png" }),
     });
     expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("cache-control")).toBe("private, max-age=86400");
     expect(readFile).toHaveBeenCalledOnce();
   });
 
