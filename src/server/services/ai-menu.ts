@@ -42,7 +42,9 @@ const TOOL = {
 const PROMPT = `This is a menu, price list, rate card or catalogue from an Indian shop, restaurant, salon or similar business. Read it and call save_items with every item that can be sold.
 Rules:
 - One entry per item and price. If an item has several prices (Half/Full, Small/Large), make one entry for each with the portion in "variant".
-- Prices are in rupees. Copy numbers exactly; never guess a price. If an item has no readable price use null.
+- Prices are in rupees. They may be written 180, 180/-, Rs. 180, ₹180 or 180.00. Copy numbers exactly; never guess a price. If an item has no readable price use null.
+- A row may carry several prices under headings like Half/Full or S/M/L (e.g. "Paneer Tikka | 180 | 320"): make one entry per price, matching the headings in order.
+- Rows read from a photo may show columns separated by " | ": the number at the end of an item's row is normally its price.
 - Ignore addresses, phone numbers, offers, taxes lines, headings that are not items, and handwriting you cannot read.
 - Keep the original language and spelling of names. Do not translate.
 - A menu has no cost price: leave cost null unless a cost or purchase rate is clearly printed.
@@ -51,7 +53,11 @@ Rules:
 type Block = { type: "image"; source: { type: "base64"; media_type: string; data: string } } | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } };
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
-const rupees = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v >= 0 && v < 1e8 ? String(Math.round(v * 100) / 100) : "");
+const rupees = (v: unknown) => {
+  // The model sometimes returns "₹180" or "180/-" as text: take the number out of it.
+  const n = typeof v === "string" ? Number(v.replace(/[^\d.]/g, "")) : v;
+  return typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 1e8 && (typeof v !== "string" || /\d/.test(v)) ? String(Math.round(n * 100) / 100) : "";
+};
 
 export const aiMenuEnabled = () => !!(env.GROQ_API_KEY || env.ANTHROPIC_API_KEY);
 
@@ -89,7 +95,7 @@ async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[
       photoText = await ocrImage(bytes);
     } catch (e) {
       console.error("[ai-menu] OCR failed", e);
-      throw new AppError("INVALID", "That picture could not be read. Try another photo.");
+      throw new AppError("INVALID", `The text reader could not open that photo (${String((e as Error)?.message ?? e).slice(0, 120)}). Try another photo.`);
     }
     if (photoText.length < 15) throw new AppError("INVALID", "No readable text was found in that photo. Try a closer, brighter, straighter photo of a printed menu.");
     model = await groqTextModel();
@@ -105,7 +111,7 @@ async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[
   }
   let res: Response;
   try {
-    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    res = await fetch(`${env.GROQ_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({ model, temperature: 0, max_tokens: 8000, response_format: { type: "json_object" }, messages: [{ role: "user", content }] }),

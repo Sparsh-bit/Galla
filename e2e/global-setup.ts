@@ -5,6 +5,7 @@ import { MongoClient } from "mongodb";
 import path from "node:path";
 import { E2E_ENV } from "../playwright.config";
 import { startMockNic } from "../scripts/mock-nic.mjs";
+import { startMockGroq } from "../scripts/mock-groq.mjs";
 
 export const MOCK_NIC_PORT = 4555;
 
@@ -17,10 +18,14 @@ export default async function globalSetup() {
   await client.close();
   await rm(path.join(dataDir, "mail.log"), { force: true });
   const nic = await startMockNic(MOCK_NIC_PORT);
+  const groq = await startMockGroq(4556);
   await mkdir(dataDir, { recursive: true });
   await writeFile(path.join(dataDir, "mock-nic.pem"), nic.publicKey);
   await makeFakeWebcam(dataDir);
-  return () => nic.close();
+  return () => {
+    nic.close();
+    groq.close();
+  };
 }
 
 /**

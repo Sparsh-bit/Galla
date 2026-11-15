@@ -151,7 +151,7 @@ ${JSON.stringify(data).slice(0, 14000)}`;
 
   let res: Response;
   try {
-    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    res = await fetch(`${env.GROQ_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
       body: JSON.stringify({ model: await groqTextModel(), temperature: 0.2, max_tokens: 700, messages: [{ role: "system", content: system }, ...history.map((h) => ({ role: h.role, content: h.content }))] }),

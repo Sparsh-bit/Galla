@@ -18,7 +18,7 @@ export async function groqModelIds(): Promise<string[] | null> {
   if (cache && cache.key === key && Date.now() - cache.at < 10 * 60_000) return cache.ids;
   let ids: string[] | null = null;
   try {
-    const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(5000) });
+    const r = await fetch(`${env.GROQ_BASE_URL}/models`, { headers: { authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(5000) });
     if (r.ok) {
       const list = ((await r.json()) as { data?: { id?: string }[] }).data;
       if (Array.isArray(list)) ids = list.map((m) => String(m.id ?? "")).filter(Boolean);

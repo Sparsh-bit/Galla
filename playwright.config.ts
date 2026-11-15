@@ -29,6 +29,8 @@ export const E2E_ENV = {
   UPLOAD_DIR: path.join(E2E_DATA_DIR, "uploads"),
   E2E_DATA_DIR,
   NEXT_DIST_DIR: ".next-e2e",
+  GROQ_API_KEY: "gsk_e2e_stand_in", // the AI features run against a local stand-in (scripts/mock-groq.mjs)
+  GROQ_BASE_URL: "http://127.0.0.1:4556",
   NIC_EXTRA_HOSTS: "127.0.0.1:4555", // mock e-invoice API started by global setup
 };
 

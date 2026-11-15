@@ -14,7 +14,7 @@ async function aiStatus(): Promise<string> {
   if (aiCache && Date.now() - aiCache.at < 60_000) return aiCache.value;
   let value: string;
   try {
-    const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { authorization: `Bearer ${env.GROQ_API_KEY}` }, signal: AbortSignal.timeout(4000) });
+    const r = await fetch(`${env.GROQ_BASE_URL}/models`, { headers: { authorization: `Bearer ${env.GROQ_API_KEY}` }, signal: AbortSignal.timeout(4000) });
     if (!r.ok) value = `groq key REJECTED (${r.status})`;
     else {
       const ids = ((await r.json()) as { data?: { id: string }[] }).data?.map((m) => m.id) ?? [];
