@@ -112,4 +112,21 @@ describe("AI menu reader", () => {
     await expect(readMenu(await png(), "image/png")).rejects.toThrow(/No readable text/);
     vi.doUnmock("@/server/services/ocr");
   });
+
+  it("retries without JSON mode when the model rejects it, and reads JSON wrapped in text", async () => {
+    vi.doMock("@/server/services/ocr", () => ({ ocrImage: async () => "Masala Chai 25\nCold Coffee 90" }));
+    const { readMenu } = await load(null, "gsk_test");
+    let chatCalls = 0;
+    const fetchMock = vi.fn(async (url: string, init?: { body: string }) => {
+      if (String(url).includes("/models")) return { ok: true, status: 200, json: async () => ({ data: [{ id: "openai/gpt-oss-120b" }] }) };
+      chatCalls++;
+      if (JSON.parse(init!.body).response_format) return { ok: false, status: 400, text: async () => "response_format json_object is not supported by this model" };
+      return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'Here you go:\n```json\n{"items":[{"name":"Masala Chai","variant":"","category":"","unit":"pcs","price":"₹25","cost":null,"tax_percent":null}],"note":""}\n```' } }] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { rows } = await readMenu(await png(), "image/png");
+    expect(chatCalls).toBe(2);
+    expect(rows).toEqual([{ name: "Masala Chai", variant: "", category: "", unit: "pcs", price: "25", cost: "", tax_rate: "" }]); // "₹25" text becomes 25
+    vi.doUnmock("@/server/services/ocr");
+  });
 });

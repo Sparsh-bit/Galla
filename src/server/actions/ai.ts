@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { AI_MAX_ROWS, AI_TYPES, type AiRow } from "@/lib/ai-menu";
+import { AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
 import { allowed, loadCtx } from "../context";
 import { connectDb } from "../db";
 import { RateLimit } from "../models";
@@ -10,6 +10,14 @@ import { chatReply } from "../services/ai-chat";
 import { readMenu } from "../services/ai-menu";
 import { applyImport } from "../services/imports";
 import { toSafeError, withAuth, type ActionResult } from "../with-auth";
+
+function sniffKind(b: Buffer): "image/jpeg" | "image/png" | "image/webp" | "application/pdf" | null {
+  if (b.length > 4 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length > 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
+  if (b.length > 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  if (b.length > 5 && b.toString("ascii", 0, 5) === "%PDF-") return "application/pdf";
+  return null;
+}
 
 /** Step 1: a photo or PDF of a menu / price list -> draft rows to review. Nothing is saved yet. */
 export async function readMenuFile(form: FormData): Promise<ActionResult<{ rows: AiRow[]; note: string }>> {
@@ -19,7 +27,10 @@ export async function readMenuFile(form: FormData): Promise<ActionResult<{ rows:
     if (!allowed(ctx, "products:write")) return { ok: false, code: "FORBIDDEN", error: "You don't have permission to do that." };
     const file = form.get("file");
     if (!(file instanceof File)) return { ok: false, code: "INVALID", error: "Choose a photo or PDF first." };
-    if (!(AI_TYPES as readonly string[]).includes(file.type)) return { ok: false, code: "INVALID", error: "Use a photo (JPG, PNG, WebP) or a PDF." };
+    // Judge the file by its bytes: phones label photos inconsistently (image/jpg, empty, application/octet-stream).
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const kind = sniffKind(bytes);
+    if (!kind) return { ok: false, code: "INVALID", error: "Use a photo (JPG, PNG, WebP) or a PDF." };
     await connectDb();
     const rate = await RateLimit.findOneAndUpdate(
       { key: `ai-menu:${ctx.orgId}` },
@@ -27,7 +38,7 @@ export async function readMenuFile(form: FormData): Promise<ActionResult<{ rows:
       { upsert: true, returnDocument: "after" },
     );
     if ((rate?.count ?? 0) > 20) return { ok: false, error: "Too many photos read in the last hour. Try again later." };
-    return { ok: true, data: await readMenu(Buffer.from(await file.arrayBuffer()), file.type) };
+    return { ok: true, data: await readMenu(bytes, kind) };
   } catch (e) {
     unstable_rethrow(e);
     return { ok: false, ...toSafeError(e) };

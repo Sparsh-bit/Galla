@@ -5,7 +5,7 @@ import { env } from "@/env";
 import { AI_MAX_BYTES, AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
 import { UNITS } from "@/lib/units";
 import { AppError } from "../context";
-import { groqTextModel, groqVisionModel } from "./groq-models";
+import { groqTextModel, groqVisionModel, stripThinking } from "./groq-models";
 import { ocrImage } from "./ocr";
 
 const MODEL = "claude-sonnet-5-5";
@@ -59,6 +59,14 @@ const rupees = (v: unknown) => {
   return typeof n === "number" && Number.isFinite(n) && n >= 0 && n < 1e8 && (typeof v !== "string" || /\d/.test(v)) ? String(Math.round(n * 100) / 100) : "";
 };
 
+/** The JSON object in a model reply, even when it is wrapped in text or code fences. */
+export function parseJsonObject(raw: string): { items?: unknown[]; note?: unknown } {
+  const t = raw.replace(/```(?:json)?/gi, "");
+  const start = t.indexOf("{");
+  const end = t.lastIndexOf("}");
+  return JSON.parse(start >= 0 && end > start ? t.slice(start, end + 1) : t);
+}
+
 export const aiMenuEnabled = () => !!(env.GROQ_API_KEY || env.ANTHROPIC_API_KEY);
 
 const RAW_ITEM = (it: Record<string, unknown>): AiRow | null => {
@@ -109,25 +117,35 @@ async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[
     }
     content = [{ type: "text", text: `${PROMPT}\n\n${JSON_SHAPE}` }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${jpeg.toString("base64")}` } }];
   }
-  let res: Response;
-  try {
-    res = await fetch(`${env.GROQ_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
-      body: JSON.stringify({ model, temperature: 0, max_tokens: 8000, response_format: { type: "json_object" }, messages: [{ role: "user", content }] }),
-      signal: AbortSignal.timeout(120_000),
-    });
-  } catch {
-    throw new AppError("INVALID", "The AI reader could not be reached. Check the internet and try again.");
+  // Some Groq models reject JSON mode (400): then ask again without it and pull the JSON out of the reply.
+  const ask = async (jsonMode: boolean) => {
+    try {
+      return await fetch(`${env.GROQ_BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${env.GROQ_API_KEY}`, "content-type": "application/json" },
+        body: JSON.stringify({ model, temperature: 0, max_tokens: 8000, ...(jsonMode ? { response_format: { type: "json_object" } } : {}), messages: [{ role: "user", content }] }),
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch {
+      throw new AppError("INVALID", "The AI reader could not be reached. Check the internet and try again.");
+    }
+  };
+  let res = await ask(true);
+  if (res.status === 400) {
+    console.warn("[ai-menu] Groq rejected JSON mode, retrying without it:", (await res.text().catch(() => "")).slice(0, 200));
+    res = await ask(false);
   }
   if (!res.ok) {
-    console.error("[ai-menu] Groq returned", res.status, (await res.text().catch(() => "")).slice(0, 300));
-    throw new AppError("INVALID", res.status === 429 ? "The AI reader is busy. Try again in a minute." : "The AI reader could not read that file. Try a clearer photo or a smaller PDF.");
+    const why = (await res.text().catch(() => "")).slice(0, 300);
+    console.error("[ai-menu] Groq returned", res.status, why);
+    if (res.status === 401 || res.status === 403) throw new AppError("INVALID", "The AI key was refused. Ask Concilio Solutions to check GROQ_API_KEY.");
+    if (res.status === 429) throw new AppError("INVALID", "The AI reader is busy. Try again in a minute.");
+    throw new AppError("INVALID", `The AI reader could not read that file (AI error ${res.status}${/model/i.test(why) ? ": model problem" : ""}). Try a clearer photo or a smaller PDF.`);
   }
   const json = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   let parsed: { items?: unknown[]; note?: unknown } = {};
   try {
-    parsed = JSON.parse(json.choices?.[0]?.message?.content ?? "{}");
+    parsed = parseJsonObject(stripThinking(json.choices?.[0]?.message?.content ?? "{}"));
   } catch {
     throw new AppError("INVALID", "The AI reader gave an unreadable answer. Please try again.");
   }
