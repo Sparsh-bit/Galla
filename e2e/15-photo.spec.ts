@@ -32,4 +32,15 @@ test("a big camera photo is accepted and shrunk automatically", async ({ page, b
   const meta = await sharp(body).metadata();
   expect([meta.width, meta.height]).toEqual([1200, 1200]);
   expect(body.length).toBeLessThan(1.5 * 1024 * 1024);
+
+  // Lists ask for a small copy (fast to load); both are kept by the phone or browser for good.
+  const small = await page.request.get(`${url}?w=96`);
+  expect(small.status()).toBe(200);
+  expect(small.headers()["content-type"]).toBe("image/webp");
+  expect(small.headers()["cache-control"]).toContain("immutable");
+  const smallBody = await small.body();
+  expect(smallBody.length).toBeLessThan(15 * 1024);
+  expect((await sharp(smallBody).metadata()).width).toBe(96);
+  expect(stored.headers()["cache-control"]).toContain("immutable");
+  expect((await page.request.get(`${url}?w=77`)).headers()["content-type"]).not.toBe("image/webp"); // only fixed sizes
 });

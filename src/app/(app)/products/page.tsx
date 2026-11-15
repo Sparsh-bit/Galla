@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { thumb } from "@/lib/thumb";
 import { FolderTree, Package, Plus, Sparkles, Tags } from "lucide-react";
 import { formatQty, pageOf } from "@/lib/format";
 import { formatMoney } from "@/lib/money";
@@ -130,7 +131,7 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
                         <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
                           {p.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.images[0]} alt="" className="size-full object-cover" />
+                            <img src={thumb(p.images[0], 96) ?? p.images[0]} alt="" loading="lazy" decoding="async" className="size-full object-cover" />
                           ) : (
                             <Package className="size-4 text-muted-foreground" />
                           )}

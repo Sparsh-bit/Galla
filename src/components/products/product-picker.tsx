@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Package, Search } from "lucide-react";
 import { formatQty } from "@/lib/format";
+import { thumb } from "@/lib/thumb";
 import { searchProducts } from "@/server/actions/products";
 import type { VariantHit } from "@/server/services/products";
 import { useOrg } from "@/components/app/org-context";
@@ -44,7 +45,7 @@ export function ProductPicker({ onPick, locationId, placeholder = "Search produc
                 <CommandItem key={h.variantId} value={h.variantId} onSelect={() => { onPick(h); setQ(""); setOpen(false); }} className="gap-3">
                   <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded border bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {h.image ? <img src={h.image} alt="" className="size-full object-cover" /> : <Package className="size-3.5" />}
+                    {h.image ? <img src={thumb(h.image, 96) ?? h.image} alt="" className="size-full object-cover" /> : <Package className="size-3.5" />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate">{h.name}{h.variantName && <span className="text-muted-foreground"> · {h.variantName}</span>}</span>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Minus, Package, Plus, Trash2 } from "lucide-react";
+import { thumb } from "@/lib/thumb";
 import { formatQty } from "@/lib/format";
 import { fromMinor, toMinor } from "@/lib/money";
 import { listBatches } from "@/server/actions/sales";
@@ -22,7 +23,7 @@ export function CartLineRow({ line, total, locationId, allowNegative, onChange, 
     <li className="group flex gap-3 px-3 py-2.5">
       <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        {hit.image ? <img src={hit.image} alt="" className="size-full object-cover" /> : <Package className="size-4 text-muted-foreground" />}
+        {hit.image ? <img src={thumb(hit.image, 96) ?? hit.image} alt="" className="size-full object-cover" /> : <Package className="size-4 text-muted-foreground" />}
       </span>
       <div className="min-w-0 flex-1">
         <LineEditor line={line} locationId={locationId} onChange={onChange} onRemove={onRemove}>

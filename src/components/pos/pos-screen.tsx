@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CirclePause, Hash, History, Package, Percent, Search, ShoppingCart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatQty } from "@/lib/format";
+import { thumb } from "@/lib/thumb";
 import { fromMinor, toMinor } from "@/lib/money";
 import { computeBill } from "@/lib/tax";
 import { searchProducts, lookupCode } from "@/server/actions/products";
@@ -438,7 +439,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
                   >
                     <span className="grid aspect-[4/3] w-full place-items-center bg-muted/60">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {h.image ? <img src={h.image} alt="" className="size-full object-cover" /> : <span className="text-2xl font-semibold text-muted-foreground/60">{h.name.slice(0, 2).toUpperCase()}</span>}
+                      {h.image ? <img src={thumb(h.image, 256) ?? h.image} alt="" loading="lazy" decoding="async" className="size-full object-cover" /> : <span className="text-2xl font-semibold text-muted-foreground/60">{h.name.slice(0, 2).toUpperCase()}</span>}
                     </span>
                     <span className="flex flex-1 flex-col gap-0.5 p-2.5">
                       <span className="line-clamp-2 text-sm font-medium leading-snug">
