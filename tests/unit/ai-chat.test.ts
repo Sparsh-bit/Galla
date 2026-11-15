@@ -42,40 +42,39 @@ describe("Ask Galla", () => {
     await expect(chatReply(ctx(), [{ role: "user", content: "hi" }])).rejects.toThrow(/not switched on/);
   });
 
-  it("calls a tool for numbers, feeds the result back, and returns the final answer", async () => {
+  it("answers from live shop data in one call, no tool calling", async () => {
     const { chatReply } = await load();
-    const replies = [
-      { choices: [{ message: { content: null, tool_calls: [{ id: "t1", function: { name: "sales_summary", arguments: '{"period":"today"}' } }] } }] },
-      { choices: [{ message: { content: "Aaj ₹12,345 ki bikri hui, 12 bills." } }] },
-    ];
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => replies.shift() }));
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: "Aaj ₹12,345 ki bikri hui, 12 bills." } }] }) }));
     vi.stubGlobal("fetch", fetchMock);
     const out = await chatReply(ctx(), [{ role: "user", content: "aaj kitni sale hui?" }]);
     expect(out).toBe("Aaj ₹12,345 ki bikri hui, 12 bills.");
-    const second = JSON.parse((fetchMock.mock.calls[1] as unknown as [string, { body: string }])[1].body);
-    const toolMsg = second.messages.find((m: { role: string }) => m.role === "tool");
-    expect(JSON.parse(toolMsg.content)).toMatchObject({ bills: 12, revenue: "₹12,345.00" });
-    // The model is told it can only read, and the shop's name is in the prompt.
-    expect(second.messages[0].content).toContain("Sharma Kirana");
-    expect(second.messages[0].content).toMatch(/only read/);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
+    expect(body.tools).toBeUndefined();
+    const system = body.messages[0].content as string;
+    expect(system).toContain("Sharma Kirana");
+    expect(system).toMatch(/only read/);
+    const data = JSON.parse(system.slice(system.indexOf("LIVE DATA (JSON, amounts are formatted money):\n") + "LIVE DATA (JSON, amounts are formatted money):\n".length));
+    expect(data.sales_today).toMatchObject({ bills: 12, revenue: "₹12,345.00", profit: "₹3,000.00" });
   });
 
-  it("hides the money tools from roles without access", async () => {
+  it("keeps money data away from roles without access", async () => {
     const { chatReply } = await load();
-    const replies = [
-      { choices: [{ message: { content: null, tool_calls: [{ id: "t1", function: { name: "who_owes_money", arguments: '{"kind":"customer"}' } }] } }] },
-      { choices: [{ message: { content: "Ask the owner." } }] },
-    ];
-    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => replies.shift() }));
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: "ok" } }] }) }));
     vi.stubGlobal("fetch", fetchMock);
-    await chatReply(ctx("cashier"), [{ role: "user", content: "who owes?" }]);
-    const second = JSON.parse((fetchMock.mock.calls[1] as unknown as [string, { body: string }])[1].body);
-    expect(second.messages.find((m: { role: string }) => m.role === "tool").content).toContain("not allowed");
+    await chatReply(ctx("cashier"), [{ role: "user", content: "who owes money?" }]);
+    const system = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body).messages[0].content as string;
+    expect(system).toContain("not allowed"); // the dues section says the role may not see it
+    expect(system).not.toContain("profit");
   });
 
-  it("gives up politely if the model keeps asking for tools", async () => {
+  it("tells the operator what is wrong, not a vague failure", async () => {
     const { chatReply } = await load();
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: null, tool_calls: [{ id: "t", function: { name: "low_stock", arguments: "{}" } }] } }] }) })));
-    expect(await chatReply(ctx(), [{ role: "user", content: "x" }])).toMatch(/too many steps/);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 401, text: async () => "bad key" })));
+    await expect(chatReply(ctx(), [{ role: "user", content: "x" }])).rejects.toThrow(/GROQ_API_KEY/);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 404, text: async () => "model gone" })));
+    await expect(chatReply(ctx(), [{ role: "user", content: "x" }])).rejects.toThrow(/GROQ_TEXT_MODEL/);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 429, text: async () => "slow down" })));
+    await expect(chatReply(ctx(), [{ role: "user", content: "x" }])).rejects.toThrow(/busy/);
   });
 });
