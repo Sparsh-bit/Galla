@@ -35,7 +35,7 @@ import { DuplicateDialog } from "./duplicate-dialog";
 import { NumberPad } from "./number-pad";
 import { OfflineStatus } from "@/components/offline/offline-status";
 import { useOfflinePos } from "@/components/offline/use-offline-pos";
-import { isNetworkError } from "@/components/offline/use-online";
+import { isNetworkError, reloadIfStale } from "@/components/offline/use-online";
 import { SaleComplete, type CompletedSale } from "./sale-complete";
 import type { CartLine, PosConfig, PosCustomer } from "./types";
 
@@ -153,7 +153,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
         const res = await lookupCode({ code, locationId });
         return res.ok ? res.data : null;
       } catch (e) {
-        if (!isNetworkError(e)) return "error";
+        if (reloadIfStale(e) || !isNetworkError(e)) return "error";
       }
     }
     return offline.lookupLocal(code);
@@ -230,6 +230,7 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
         router.refresh();
       } catch (e) {
         // Connection dropped mid-sale: save it offline with the same clientId (sync de-duplicates).
+        if (reloadIfStale(e)) return void toast.info("Galla was updated. Reloading, then please sell again.");
         if (isNetworkError(e)) await sellOffline();
         else toast.error("Something went wrong. Please try again.");
       }

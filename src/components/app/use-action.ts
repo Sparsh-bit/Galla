@@ -1,6 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { reloadIfStale } from "@/components/offline/use-online";
 import type { ActionResult } from "@/server/with-auth";
 
 /** Runs a server action, tracks pending state and field errors, toasts failures. */
@@ -13,7 +14,8 @@ export function useAction<I, T>(action: (input: I) => Promise<ActionResult<T>>) 
       let res: ActionResult<T>;
       try {
         res = await action(input);
-      } catch {
+      } catch (e) {
+        if (reloadIfStale(e)) return;
         res = { ok: false, error: "Network error. Check your connection and try again." };
       }
       if (res.ok) {
