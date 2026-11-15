@@ -21,7 +21,7 @@ async function aiStatus(): Promise<string> {
       aiModels = ids;
       const text = chooseModel(ids, env.GROQ_TEXT_MODEL, "text");
       const vision = chooseModel(ids, env.GROQ_MODEL, "vision");
-      value = ids.includes(text) ? `groq ok (chat: ${text}; photos: ${ids.includes(vision) ? vision : "no vision model available"})` : "groq key ok but no usable chat model found";
+      value = ids.includes(text) ? `groq ok (chat: ${text}; photos: ${vision && ids.includes(vision) ? vision : "built-in text reader (OCR)"})` : "groq key ok but no usable chat model found";
     }
   } catch {
     value = "groq unreachable";

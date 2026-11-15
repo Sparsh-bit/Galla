@@ -6,6 +6,7 @@ import { AI_MAX_BYTES, AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
 import { UNITS } from "@/lib/units";
 import { AppError } from "../context";
 import { groqTextModel, groqVisionModel } from "./groq-models";
+import { ocrImage } from "./ocr";
 
 const MODEL = "claude-sonnet-5-5";
 const UNIT_CODES = UNITS.map((u) => u.code);
@@ -68,7 +69,7 @@ const JSON_SHAPE = `Answer with JSON only, exactly in this shape (no other text)
 /** Groq (OpenAI-compatible): a vision model reads photos; PDFs are read as text, then structured by a text model. */
 async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[]; note: string }> {
   let content: unknown;
-  let model = await groqVisionModel();
+  let model = (await groqVisionModel()) ?? "";
   if (mime === "application/pdf") {
     if (bytes.subarray(0, 5).toString("ascii") !== "%PDF-") throw new AppError("INVALID", "That file is not a valid PDF.");
     let pdfText = "";
@@ -81,6 +82,18 @@ async function readWithGroq(bytes: Buffer, mime: string): Promise<{ rows: AiRow[
     if (pdfText.length < 20) throw new AppError("INVALID", "This PDF is a scanned picture with no text. Take a photo of the menu instead and use that.");
     model = await groqTextModel();
     content = `${PROMPT}\n\n${JSON_SHAPE}\n\nDocument text:\n"""\n${pdfText.slice(0, 60_000)}\n"""`;
+  } else if (!model) {
+    // No vision model on this AI account: read the text off the photo ourselves, then let the chat model structure it.
+    let photoText = "";
+    try {
+      photoText = await ocrImage(bytes);
+    } catch (e) {
+      console.error("[ai-menu] OCR failed", e);
+      throw new AppError("INVALID", "That picture could not be read. Try another photo.");
+    }
+    if (photoText.length < 15) throw new AppError("INVALID", "No readable text was found in that photo. Try a closer, brighter, straighter photo of a printed menu.");
+    model = await groqTextModel();
+    content = `${PROMPT}\nThe text below was read from a PHOTO by an automatic text reader, so it may contain small mistakes (e.g. O for 0) and mixed-up columns: use the layout and common sense to pair each item with its price, and put anything doubtful in "note".\n\n${JSON_SHAPE}\n\nPhoto text:\n"""\n${photoText.slice(0, 60_000)}\n"""`;
   } else {
     let jpeg: Buffer;
     try {

@@ -85,4 +85,31 @@ describe("AI menu reader", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: "{\"items\":[],\"note\":\"\"}" } }] }) })));
     await expect(readMenu(Buffer.from("%PDF-1.4 garbage"), "application/pdf")).rejects.toThrow(/could not be read|scanned/);
   });
+
+  it("reads a photo with the built-in text reader when the AI account has no vision model", async () => {
+    vi.doMock("@/server/services/ocr", () => ({ ocrImage: async () => "SHARMA CAFE\nPaneer Tikka Half 180\nMasala Chai 25" }));
+    const { readMenu } = await load(null, "gsk_test");
+    const fetchMock = vi.fn(async (url: string) =>
+      String(url).includes("/models")
+        ? { ok: true, status: 200, json: async () => ({ data: [{ id: "openai/gpt-oss-120b" }, { id: "whisper-large-v3" }] }) }
+        : { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: JSON.stringify({ items: [{ name: "Masala Chai", variant: "", category: "", unit: "pcs", price: 25, cost: null, tax_percent: null }], note: "" }) } }] }) },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const { rows } = await readMenu(await png(), "image/png");
+    expect(rows).toEqual([{ name: "Masala Chai", variant: "", category: "", unit: "pcs", price: "25", cost: "", tax_rate: "" }]);
+    const chat = (fetchMock.mock.calls as unknown as [string, { body: string }][]).find((c) => String(c[0]).includes("chat/completions"))!;
+    const body = JSON.parse(chat[1].body);
+    expect(body.model).toBe("openai/gpt-oss-120b");
+    expect(typeof body.messages[0].content).toBe("string"); // text only: no image sent
+    expect(body.messages[0].content).toContain("Paneer Tikka Half 180");
+    vi.doUnmock("@/server/services/ocr");
+  });
+
+  it("explains a photo with no readable text", async () => {
+    vi.doMock("@/server/services/ocr", () => ({ ocrImage: async () => "  " }));
+    const { readMenu } = await load(null, "gsk_test");
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url).includes("/models") ? { ok: true, status: 200, json: async () => ({ data: [{ id: "openai/gpt-oss-120b" }] }) } : { ok: true, status: 200, json: async () => ({}) })));
+    await expect(readMenu(await png(), "image/png")).rejects.toThrow(/No readable text/);
+    vi.doUnmock("@/server/services/ocr");
+  });
 });

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   // Keep E2E production builds separate from a concurrent local dev server's .next directory.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   poweredByHeader: false,
-  serverExternalPackages: ["mongoose", "mongodb", "exceljs", "bwip-js"],
+  serverExternalPackages: ["mongoose", "mongodb", "exceljs", "bwip-js", "tesseract.js"],
   experimental: {
     serverActions: { bodySizeLimit: "6mb" },
     // The persistent Turbopack cache breaks when macOS writes "._*" metadata files into it

@@ -35,15 +35,16 @@ export function chooseModel(ids: string[] | null, configured: string, kind: "tex
   if (!ids) return configured;
   if (ids.includes(configured)) return configured;
   const usable = ids.filter((i) => !NOT_CHAT.test(i));
-  if (kind === "vision") return usable.find((i) => VISION_ANY.test(i)) ?? configured;
+  if (kind === "vision") return usable.find((i) => VISION_ANY.test(i)) ?? "";
   return TEXT_PREFERENCE.find((p) => usable.includes(p)) ?? usable.find((i) => TEXT_ANY.test(i)) ?? configured;
 }
 
 export async function groqTextModel() {
   return chooseModel(await groqModelIds(), env.GROQ_TEXT_MODEL, "text");
 }
-export async function groqVisionModel() {
-  return chooseModel(await groqModelIds(), env.GROQ_MODEL, "vision");
+/** A vision model, or null when the account has none (photos are then read with the built-in text reader). */
+export async function groqVisionModel(): Promise<string | null> {
+  return chooseModel(await groqModelIds(), env.GROQ_MODEL, "vision") || null;
 }
 
 /** Some reasoning models put their thinking in <think> tags: show only the answer. */
