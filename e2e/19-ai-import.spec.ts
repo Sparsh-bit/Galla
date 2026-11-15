@@ -27,6 +27,20 @@ test("AI import: a menu photo becomes editable products with prices and no cost 
   await page.getByRole("button", { name: /^Add 4 products$/ }).click();
   await expect(page.getByText("4 products added")).toBeVisible({ timeout: 30_000 });
 
-  await page.goto("/products?q=Masala");
-  await expect(page.getByText("Masala Chai").first()).toBeVisible();
+  // Every item got a short number (at most 3 digits), listed to note down.
+  const list = page.getByRole("list", { name: "Product numbers" });
+  await expect(list.getByRole("listitem")).toHaveCount(4);
+  const numbers = (await list.getByRole("listitem").evaluateAll((els) => els.map((e) => e.textContent ?? ""))).map((t) => /^(\d+)/.exec(t)![1]);
+  expect(numbers.every((n) => /^[1-9]\d{0,2}$/.test(n))).toBe(true);
+  expect(new Set(numbers).size).toBe(4);
+  const chai = (await list.getByRole("listitem").filter({ hasText: "Masala Chai" }).textContent())!.match(/^(\d+)/)![1];
+
+  // That number bills the item on the number pad.
+  await page.goto("/pos");
+  await page.getByRole("button", { name: "Product number pad" }).click();
+  const pad = page.getByRole("dialog", { name: /Product number/ });
+  for (const d of chai) await pad.getByRole("button", { name: d, exact: true }).click();
+  await expect(pad.getByText("Masala Chai")).toBeVisible();
+  await pad.getByRole("button", { name: /Next/ }).click();
+  await expect(pad.getByText("Added: Masala Chai")).toBeVisible();
 });

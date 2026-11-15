@@ -23,7 +23,7 @@ export function MenuImport({ enabled }: { enabled: boolean }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<"reading" | "saving" | null>(null);
-  const [result, setResult] = useState<{ created: number; failed: { row: number; message: string }[] } | null>(null);
+  const [result, setResult] = useState<{ created: number; failed: { row: number; message: string }[]; numbers: { name: string; number: string }[] } | null>(null);
 
   async function read(file: File | undefined) {
     if (!file) return;
@@ -56,12 +56,10 @@ export function MenuImport({ enabled }: { enabled: boolean }) {
     const r = await addMenuProducts({ rows: rows.map((r) => ({ name: r.name, variant: r.variant, category: r.category, unit: r.unit, price: r.price, cost: r.cost, tax_rate: r.tax_rate })) });
     setBusy(null);
     if (!r.ok) return void toast.error(r.error);
-    setResult({ created: r.data.created, failed: r.data.failed });
+    setResult({ created: r.data.created, failed: r.data.failed, numbers: r.data.numbers });
     toast.success(`${r.data.created} product${r.data.created === 1 ? "" : "s"} added`);
-    if (!r.data.failed.length) {
-      setRows(null);
-      router.refresh();
-    }
+    if (!r.data.failed.length) setRows(null);
+    router.refresh();
   }
 
   return (
@@ -113,6 +111,30 @@ export function MenuImport({ enabled }: { enabled: boolean }) {
             <div className="flex flex-wrap items-center gap-3 px-4 sm:px-0">
               <Button size="lg" disabled={!!busy || missing > 0 || !rows.length || rows.length > AI_MAX_ROWS} onClick={() => void save()}>{busy === "saving" && <Spinner />} Add {rows.length} product{rows.length === 1 ? "" : "s"}</Button>
               <Button variant="ghost" onClick={() => { setRows(null); setResult(null); }}>Start again</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {result && result.numbers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Product numbers</CardTitle>
+            <CardDescription>Every item got a short number (up to 3 digits). On the Sell screen, tap the Number button, type the number and press Next to bill it. Note them down or print this list.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2" aria-label="Product numbers">
+              {result.numbers.map((n) => (
+                <li key={n.number} className="flex items-baseline gap-3 border-b py-1.5">
+                  <span className="w-12 shrink-0 text-right font-mono text-lg font-semibold tabular-nums">{n.number}</span>
+                  <span className="min-w-0 truncate">{n.name}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => window.print()} variant="outline">Print this list</Button>
+              <Button onClick={() => router.push("/pos")}>Go to Sell</Button>
+              <Button variant="ghost" onClick={() => setResult(null)}>Add more from another photo</Button>
             </div>
           </CardContent>
         </Card>

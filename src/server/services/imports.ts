@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import Papa from "papaparse";
 import { normalizeHeader, parsePartyRows, parseProductRows, type ImportKind, type ProductRow, type RawRow, type RowError } from "@/lib/import";
 import { AppError, type Ctx } from "../context";
-import { Category, Location, OrgSettings, Party, Product, TaxRate } from "../models";
+import { Category, Location, OrgSettings, Party, Product, TaxRate, Types } from "../models";
 import { createProduct } from "./products";
 import { saveParty } from "./parties";
 import { audit } from "./system";
@@ -46,10 +46,15 @@ export function validate(kind: ImportKind, rows: RawRow[]) {
   return kind === "products" ? parseProductRows(rows) : parsePartyRows(rows);
 }
 
-export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[]) {
+/**
+ * `shortNumbers`: every new item without a barcode gets the smallest unused number from 1 to 999 (in the order of the
+ * rows), so it can be typed on the number pad at the counter. Numbers already used as a barcode or SKU are skipped.
+ */
+export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[], opts: { shortNumbers?: boolean } = {}) {
   const failed: RowError[] = [...validate(kind, rows).errors];
   let created = 0;
   let updated = 0;
+  const numbers: { name: string; number: string }[] = [];
 
   if (kind === "products") {
     const settings = await OrgSettings.findOne({ orgId: ctx.orgId }).lean();
@@ -74,6 +79,28 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[]) {
       return categories.get(key)!;
     };
 
+    const used = new Set<number>();
+    if (opts.shortNumbers) {
+      const taken = await Product.aggregate<{ _id: string }>([
+        { $match: { orgId: new Types.ObjectId(ctx.orgId) } },
+        { $unwind: "$variants" },
+        { $project: { all: { $concatArrays: [["$variants.sku"], "$variants.barcodes"] } } },
+        { $unwind: "$all" },
+        { $match: { all: { $regex: /^[1-9]\d{0,2}$/ } } },
+        { $group: { _id: "$all" } },
+      ]);
+      for (const t of taken) used.add(Number(t._id));
+    }
+    const takeNumber = (): string | null => {
+      for (let n = 1; n <= 999; n++) {
+        if (!used.has(n)) {
+          used.add(n);
+          return String(n);
+        }
+      }
+      return null; // all 999 are in use: the item keeps an automatic barcode
+    };
+
     // Rows sharing a name and having a variant column become one product with variants.
     const groups = new Map<string, ProductRow[]>();
     for (const r of parseProductRows(rows).valid) {
@@ -83,6 +110,7 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[]) {
     // ponytail: one transaction per product; batch inserts if imports above ~5k rows get slow.
     for (const group of groups.values()) {
       const first = group[0];
+      const given: { name: string; number: string }[] = [];
       try {
         const codes = group.flatMap((r) => [r.sku, r.barcode].filter(Boolean));
         const existing = codes.length ? await Product.findOne({ orgId: ctx.orgId, $or: [{ "variants.sku": { $in: codes } }, { "variants.barcodes": { $in: codes } }] }) : null;
@@ -107,10 +135,16 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[]) {
           name: first.name, description: "", brand: first.brand, categoryId: await categoryId(first.category), unitCode: first.unit, unitScale: first.scale, hsn: first.hsn,
           taxRateId: await rateId(first.taxRateBp), priceIncludesTax: settings?.pricesIncludeTax ?? true, trackBatch: false, trackSerial: false, warrantyMonths: 0, reorderLevel: first.reorder, images: [], active: true,
           openingLocationId: loc ? String(loc._id) : undefined,
-          variants: group.map((r) => ({ name: r.variant, sku: r.sku, barcodes: r.barcode ? [r.barcode] : [], attributes: r.variant ? [{ name: "Variant", value: r.variant }] : [], costPrice: r.cost, salePrice: r.price, mrp: r.mrp, active: true, openingQty: r.opening })),
+          variants: group.map((r) => {
+            const n = !r.barcode && opts.shortNumbers ? takeNumber() : null;
+            if (n) given.push({ name: [r.name, r.variant].filter(Boolean).join(" - "), number: n });
+            return { name: r.variant, sku: r.sku, barcodes: r.barcode ? [r.barcode] : n ? [n] : [], attributes: r.variant ? [{ name: "Variant", value: r.variant }] : [], costPrice: r.cost, salePrice: r.price, mrp: r.mrp, active: true, openingQty: r.opening };
+          }),
         });
+        numbers.push(...given);
         created += group.length;
       } catch (e) {
+        for (const g of given) used.delete(Number(g.number)); // a failed product gives its numbers back
         const msg = (e as { code?: number }).code === 11000 ? "SKU or barcode already used by another product" : (e as Error).message;
         for (const r of group) failed.push({ row: r.row, message: msg });
       }
@@ -134,5 +168,5 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[]) {
     }
   }
   await audit(ctx, "import", kind, "", `Imported ${kind}: ${created} created, ${updated} updated, ${failed.length} failed`);
-  return { created, updated, failed: failed.sort((a, b) => a.row - b.row).slice(0, 200), failedCount: failed.length };
+  return { created, updated, failed: failed.sort((a, b) => a.row - b.row).slice(0, 200), failedCount: failed.length, numbers };
 }
