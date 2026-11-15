@@ -1,0 +1,11 @@
+#!/bin/sh
+# Blocks a push that would fail CI: runs the same checks (lint, types, API docs, unit and integration tests).
+# Turn on once per clone:  git config core.hooksPath .githooks     (bypass in an emergency: git push --no-verify)
+echo "pre-push: running the CI checks (npm run verify)…"
+if ! npm run verify >/tmp/prepush.log 2>&1; then
+  tail -25 /tmp/prepush.log
+  echo ""
+  echo "pre-push: the CI checks FAILED, so nothing was pushed. Fix the problem above, then push again."
+  exit 1
+fi
+echo "pre-push: all CI checks passed."
