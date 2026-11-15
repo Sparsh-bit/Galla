@@ -18,7 +18,8 @@
     "dev:phone": "bash scripts/dev-phone.sh",
     "serve:lan": "bash scripts/serve-lan.sh",
     "api:docs": "tsx scripts/api-docs.ts",
-    "api:docs:check": "tsx scripts/api-docs.ts --check"
+    "api:docs:check": "tsx scripts/api-docs.ts --check",
+    "verify": "npm run lint && npm run typecheck && npm run api:docs:check && npm test && npm run test:int"
   },
   "dependencies": {
     "@zxing/browser": "^0.2.1",
