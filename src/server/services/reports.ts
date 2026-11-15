@@ -3,7 +3,7 @@ import { cache } from "react";
 import type { PipelineStage } from "mongoose";
 import type { Ctx } from "../context";
 import { suggestQty, type ReorderGroup } from "@/lib/reorder";
-import { Batch, LedgerEntry, Party, Product, PurchaseOrder, Sale, StockLevel, Types } from "../models";
+import { Batch, LedgerEntry, Party, Product, PurchaseOrder, Sale, StockLevel, Types, type ProductDoc } from "../models";
 
 /** Midnight of `date` in `tz`, as a UTC instant. */
 export function startOfDay(tz: string, date = new Date()): Date {
@@ -159,22 +159,26 @@ export async function stockValuation(ctx: Ctx, locationId?: string) {
 }
 
 async function lowStockUncached(ctx: Ctx, limit = 100) {
-  return Product.aggregate<{ productId: Types.ObjectId; variantId: Types.ObjectId; name: string; variantName: string; sku: string; reorderLevel: number; qty: number; scale: number; unit: string }>([
-    { $match: { orgId: oid(ctx.orgId), active: true, reorderLevel: { $gt: 0 }, trackStock: { $ne: false } } },
-    { $unwind: "$variants" },
-    { $match: { "variants.active": true } },
-    { $lookup: { from: "stocklevels", let: { v: "$variants._id" }, pipeline: [{ $match: { $expr: { $and: [{ $eq: ["$orgId", oid(ctx.orgId)] }, { $eq: ["$variantId", "$$v"] }] } } }, { $group: { _id: null, qty: { $sum: "$qty" } } }], as: "s" } },
-    { $project: { productId: "$_id", variantId: "$variants._id", name: 1, variantName: "$variants.name", sku: "$variants.sku", reorderLevel: 1, scale: "$unit.scale", unit: "$unit.code", qty: { $ifNull: [{ $first: "$s.qty" }, 0] } } },
-    { $match: { $expr: { $lte: ["$qty", { $multiply: ["$reorderLevel", { $ifNull: ["$scale", 1] }] }] } } },
-    { $sort: { qty: 1 } },
-    { $limit: limit },
+  // Two plain indexed queries instead of one lookup per variant: the items with a low-stock level set (few), then
+  // their stock in one grouped read. Stays fast with hundreds of thousands of products.
+  const products = await Product.find(
+    { orgId: ctx.orgId, active: true, reorderLevel: { $gt: 0 }, trackStock: { $ne: false } },
+    { name: 1, reorderLevel: 1, unit: 1, "variants._id": 1, "variants.name": 1, "variants.sku": 1, "variants.active": 1 },
+  ).lean<ProductDoc[]>();
+  const rows = products.flatMap((p) => p.variants.filter((v) => v.active).map((v) => ({ p, v })));
+  if (!rows.length) return [];
+  const levels = await StockLevel.aggregate<{ _id: Types.ObjectId; qty: number }>([
+    { $match: { orgId: oid(ctx.orgId), variantId: { $in: rows.map(({ v }) => v._id) } } },
+    { $group: { _id: "$variantId", qty: { $sum: "$qty" } } },
   ]);
+  const qty = new Map(levels.map((l) => [String(l._id), l.qty]));
+  return rows
+    .map(({ p, v }) => ({ productId: p._id as Types.ObjectId, variantId: v._id as Types.ObjectId, name: p.name, variantName: v.name ?? "", sku: v.sku ?? "", reorderLevel: p.reorderLevel, qty: qty.get(String(v._id)) ?? 0, scale: p.unit?.scale ?? 1, unit: p.unit?.code ?? "pcs" }))
+    .filter((r) => r.qty <= r.reorderLevel * r.scale)
+    .sort((x, y) => x.qty - y.qty)
+    .slice(0, limit);
 }
 
-/**
- * Low-stock items grouped by the supplier they were last bought from (so one WhatsApp message per
- * supplier). Items never purchased through Galla go in a "No supplier yet" group.
- */
 /** The dashboard, inventory page and reorder list ask for this several times per request: compute it once. */
 export const lowStock = cache(lowStockUncached);
 

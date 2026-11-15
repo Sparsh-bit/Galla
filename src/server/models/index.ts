@@ -1,5 +1,6 @@
 import mongoose, { Schema, type InferSchemaType, type Model, Types } from "mongoose";
 import { tenantPlugin } from "./tenant-plugin";
+import { searchTokens } from "@/lib/search-tokens";
 
 const { ObjectId } = Schema.Types;
 const orgId = { type: ObjectId, required: true, index: true } as const;
@@ -135,6 +136,8 @@ const productSchema = new Schema(
     images: { type: [String], default: [] },
     active: { type: Boolean, default: true },
     variants: { type: [variantSchema], validate: (v: unknown[]) => v.length > 0 },
+    // Words the product can be found by (see lib/search-tokens): lets search use an index instead of scanning every product.
+    search: { type: [String], default: undefined, select: false },
   },
   opts,
 );
@@ -142,6 +145,10 @@ productSchema.index({ orgId: 1, "variants.barcodes": 1 }, { unique: true });
 productSchema.index({ orgId: 1, "variants.sku": 1 }, { unique: true });
 productSchema.index({ orgId: 1, name: "text", brand: "text", "variants.sku": "text" });
 productSchema.index({ orgId: 1, active: 1, name: 1 });
+productSchema.index({ orgId: 1, search: 1 });
+productSchema.pre("save", function () {
+  this.search = searchTokens({ name: this.name, brand: this.brand, variants: this.variants.map((v) => ({ name: v.name, sku: v.sku, barcodes: [...(v.barcodes ?? [])] })) });
+});
 export const Product = model("Product", productSchema);
 
 const batchSchema = new Schema(

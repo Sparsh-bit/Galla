@@ -70,6 +70,9 @@ export function useOfflinePos(orgId: string, locationId: string) {
     let alive = true;
     const load = async () => {
       try {
+        // A big shop's catalogue is several MB: do not download it again if the saved copy is still fresh.
+        const saved = await getSnapshot(orgId, locationId).catch(() => null);
+        if (saved?.generatedAt && Date.now() - Date.parse(saved.generatedAt) < REFRESH_MS) return;
         const r = await getPosSnapshot({ locationId });
         if (r.ok && alive) {
           setSnap(r.data);

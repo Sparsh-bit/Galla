@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { makeInternalEan13 } from "@/lib/ean13";
 import { productInput } from "@/lib/schemas";
+import { searchTokens } from "@/lib/search-tokens";
 import { AppError, type Ctx } from "../context";
 import { Batch, Category, Location, Product, TaxRate, Types, type ProductDoc } from "../models";
 import { inTransaction } from "../with-auth";
@@ -172,14 +173,54 @@ export async function findByCode(ctx: Ctx, code: string, locationId?: string): P
   return hit ? { ...hit, serial: sn.serial } : null;
 }
 
+const backfilled = new Set<string>();
+
+/** Products made before search words existed get them once (per server start), so search can use its index. */
+async function ensureSearchTokens(orgId: string) {
+  if (backfilled.has(orgId)) return;
+  backfilled.add(orgId);
+  try {
+    if (!(await Product.exists({ orgId, search: { $exists: false } }))) return;
+    let ops: import("mongodb").AnyBulkWriteOperation<import("bson").Document>[] = [];
+    const flush = async () => {
+      if (ops.length) await Product.collection.bulkWrite(ops, { ordered: false });
+      ops = [];
+    };
+    for await (const p of Product.find({ orgId, search: { $exists: false } }, { name: 1, brand: 1, "variants.name": 1, "variants.sku": 1, "variants.barcodes": 1 }).lean<ProductDoc[]>().cursor()) {
+      ops.push({ updateOne: { filter: { _id: p._id }, update: { $set: { search: searchTokens({ name: p.name, brand: p.brand, variants: p.variants }) } } } });
+      if (ops.length >= 1000) await flush();
+    }
+    await flush();
+  } catch (e) {
+    backfilled.delete(orgId); // try again next time
+    console.error("[search] could not index products", e);
+  }
+}
+
 export async function searchVariants(ctx: Ctx, q: string, locationId?: string, limit = 20): Promise<VariantHit[]> {
   const term = q.trim().slice(0, 80);
-  const filter: Record<string, unknown> = { orgId: ctx.orgId, active: true };
-  if (term) {
-    const rx = new RegExp(escapeRegex(term), "i");
-    filter.$or = [{ name: rx }, { brand: rx }, { "variants.sku": rx }, { "variants.barcodes": term }, { "variants.name": rx }];
+  const base: Record<string, unknown> = { orgId: ctx.orgId, active: true };
+  if (!term) {
+    const products = await Product.find(base).sort({ name: 1 }).limit(limit).lean<ProductDoc[]>();
+    return (await toHits(ctx, products, locationId)).slice(0, limit * 2);
   }
-  const products = await Product.find(filter).sort({ name: 1 }).limit(limit).lean<ProductDoc[]>();
+  // Fast path: every typed word is the start of a word in the product (name, brand, variant, SKU or barcode).
+  await ensureSearchTokens(ctx.orgId);
+  const words = term.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0, 6);
+  let products: ProductDoc[] = [];
+  if (words.length) {
+    const q = Product.find({ ...base, $or: [{ $and: words.map((w) => ({ search: { $regex: `^${escapeRegex(w)}` } })) }, { "variants.barcodes": term }] });
+    // One word: the index gives them in name order. Several words can match thousands: stop early, then order the few.
+    products = words.length === 1 ? await q.sort({ name: 1 }).limit(limit).lean<ProductDoc[]>() : (await q.limit(limit * 3).lean<ProductDoc[]>()).sort((a, b) => a.name.localeCompare(b.name)).slice(0, limit);
+  }
+  // Nothing starts with those letters: look inside words too (e.g. "ice" in "Rice"), the slower way.
+  if (!products.length) {
+    const rx = new RegExp(escapeRegex(term), "i");
+    products = await Product.find({ ...base, $or: [{ name: rx }, { brand: rx }, { "variants.sku": rx }, { "variants.barcodes": term }, { "variants.name": rx }] })
+      .sort({ name: 1 })
+      .limit(limit)
+      .lean<ProductDoc[]>();
+  }
   return (await toHits(ctx, products, locationId)).slice(0, limit * 2);
 }
 
