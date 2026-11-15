@@ -100,7 +100,7 @@ export function PoForm({ suppliers, locations, initial, mode = "order", defaultS
       add(r.data);
     } else {
       scanFeedback(false);
-      toast.error(`No product with code ${code}`, { action: { label: "Create product", onClick: () => setNewProduct({ code }) } });
+      toast.error(`No product with code ${code}`, { description: "Nothing was added." }); // an unknown code is never added
     }
   };
   useScanner(onCode, !newProduct);

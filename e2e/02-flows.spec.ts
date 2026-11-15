@@ -56,14 +56,15 @@ test("batch-tracked product: opening stock with batch number and expiry", async 
   await expect(page.getByText("20 pcs")).toBeVisible();
 });
 
-test("unknown barcode offers to create a product", async ({ page }) => {
+test("an unknown barcode adds nothing and does not offer to create a product", async ({ page }) => {
   await page.goto("/pos");
   await expect(page.getByRole("textbox", { name: "Search product or scan barcode" })).toBeVisible();
   await scan(page, "0000000999999");
   await expect(page.getByText("No product with code 0000000999999")).toBeVisible();
-  await page.getByRole("button", { name: "Create" }).click();
-  await expect(page).toHaveURL(/products\/new\?barcode=0000000999999/);
-  await expect(page.getByRole("textbox", { name: "Barcode / product no." })).toHaveValue("0000000999999");
+  await expect(page.getByText("Nothing was added to the bill.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/pos$/);
+  await expect(page.getByRole("list", { name: "Cart items" })).toHaveCount(0); // the bill is still empty
 });
 
 test("credit sale to a customer, then collect the payment", async ({ page }) => {

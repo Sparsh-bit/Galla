@@ -140,7 +140,31 @@ export function lookupInSnapshot<V extends { variantId: string; barcode: string;
   return v ? { ...v, serial: sn.serial } : null;
 }
 
+const keys = new WeakMap<object, string>();
+
+/**
+ * Search the till's saved catalogue. Every typed word must appear somewhere in the item's name, variant, SKU or
+ * barcode; an exact barcode comes first. Each item's searchable text is built once and reused, and the scan stops as
+ * soon as enough items are found, so typing stays instant even with tens of thousands of products.
+ */
 export function searchSnapshot<V extends { name: string; variantName: string; sku: string; barcode: string }>(variants: V[], q: string, limit = 40): V[] {
-  const t = q.trim().toLowerCase();
-  return variants.filter((v) => !t || v.name.toLowerCase().includes(t) || v.variantName.toLowerCase().includes(t) || v.sku.toLowerCase().includes(t) || v.barcode === q.trim()).slice(0, limit);
+  const exact = q.trim();
+  const words = exact.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return variants.slice(0, limit);
+  const out: V[] = [];
+  let first = 0; // exact barcode matches go to the front
+  for (const v of variants) {
+    if (v.barcode === exact) {
+      out.splice(first++, 0, v);
+      continue;
+    }
+    let key = keys.get(v);
+    if (key === undefined) {
+      key = `${v.name} ${v.variantName} ${v.sku} ${v.barcode}`.toLowerCase();
+      keys.set(v, key);
+    }
+    if (words.every((w) => key.includes(w))) out.push(v);
+    if (out.length >= limit) break;
+  }
+  return out.slice(0, limit);
 }

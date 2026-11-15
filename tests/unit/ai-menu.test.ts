@@ -65,7 +65,7 @@ describe("AI menu reader", () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,
       status: 200,
-      json: async () => ({ choices: [{ message: { content: JSON.stringify({ items: [{ name: "Veg Burger", variant: "", category: "Snacks", unit: "pcs", price: 89, cost: null, tax_percent: null }, { name: "<b>x</b>", unit: "weird", price: -5 }], note: "" }) } }] }),
+      json: async () => ({ choices: [{ message: { content: JSON.stringify({ items: [{ name: "Veg Burger", variant: "", category: "Snacks", unit: "pcs", price: 89, cost: null, tax_percent: null }, { name: "Rice Bag", unit: "weird", price: -5 }], note: "" }) } }] }),
     }));
     vi.stubGlobal("fetch", fetchMock);
     const { rows } = await readMenu(await png(), "image/png");
@@ -128,5 +128,15 @@ describe("AI menu reader", () => {
     expect(chatCalls).toBe(2);
     expect(rows).toEqual([{ name: "Masala Chai", variant: "", category: "", unit: "pcs", price: "25", cost: "", tax_rate: "" }]); // "₹25" text becomes 25
     vi.doUnmock("@/server/services/ocr");
+  });
+
+  it("never offers lines that are not a real product name", async () => {
+    const { looksLikeProductName } = await import("@/lib/ai-menu");
+    for (const junk of ["", "x", "0oood", "|| --", "1234567", "....", "aaaa", "12 34 56", "₹ 180"]) expect(looksLikeProductName(junk), junk).toBe(false);
+    for (const ok of ["Tea", "Paneer Tikka", "Masala Chai 250ml", "चाय", "7Up", "Pepsi 2L"]) expect(looksLikeProductName(ok), ok).toBe(true);
+    const { readMenu } = await load("sk-ant-test");
+    vi.stubGlobal("fetch", vi.fn(async () => reply({ note: "", items: [{ name: "0oood", variant: "", category: "", unit: "pcs", price: 5, cost: null, tax_percent: null }, { name: "Tea", variant: "", category: "", unit: "pcs", price: 10, cost: null, tax_percent: null }] })));
+    const { rows } = await readMenu(await png(), "image/png");
+    expect(rows.map((r) => r.name)).toEqual(["Tea"]);
   });
 });

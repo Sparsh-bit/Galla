@@ -188,6 +188,19 @@ describe("stock & sales invariants", () => {
     expect(sale!.balanceDue).toBe(0);
   });
 
+  it("a part-paid udhaar bill owes only the unpaid part, and later payments reduce it", async () => {
+    const c = ctx();
+    const loc = await business(c);
+    const { variantId } = await product(c, 10);
+    const { id: customerId } = await svc.parties.saveParty(c, null, { kind: "customer", name: "Ravi", phone: "", email: "", taxId: "", stateCode: "", address: {}, creditLimit: 0, openingBalance: 0, notes: "" });
+    const { saleId } = await svc.sales.completeSale(c, { ...cashSale(loc, variantId), customerId, payments: [{ method: "cash", amount: 400, reference: "" }, { method: "credit", amount: 600, reference: "" }] });
+    const due = async () => (await svc.models.Sale.findOne({ orgId: c.orgId, _id: saleId }).lean())!.balanceDue;
+    const bal = async () => (await svc.models.Party.findOne({ orgId: c.orgId, _id: customerId }).lean())!.balance;
+    expect([await due(), await bal()]).toEqual([600, 600]);
+    await svc.parties.recordPayment(c, { partyId: customerId, amount: 200, method: "cash", reference: "" });
+    expect([await due(), await bal()]).toEqual([400, 400]);
+  });
+
   it("tracks serial numbers from purchase to sale to return", async () => {
     const c = ctx();
     const loc = await business(c);

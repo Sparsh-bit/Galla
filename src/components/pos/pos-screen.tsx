@@ -183,9 +183,8 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
       return `Added: ${label}`;
     }
     scanFeedback(false);
-    toast.error(`No product with code ${code}`, {
-      action: org.can("products:write") ? { label: "Create", onClick: () => router.push(`/products/new?barcode=${encodeURIComponent(code)}`) } : undefined,
-    });
+    // An unknown code adds nothing to the bill, and never offers to make a product on the spot.
+    toast.error(`No product with code ${code}`, { description: "Nothing was added to the bill." });
     return `No product with code ${code}`;
   };
 

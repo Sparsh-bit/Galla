@@ -69,8 +69,7 @@ export function PhoneLinkProvider({ children }: { children: React.ReactNode }) {
       if (target === "product") {
         const res = await lookupCode({ code });
         if (res.ok && res.data) return router.push(`/products/${res.data.productId}`);
-        if (org.can("products:write")) return router.push(`/products/new?barcode=${encodeURIComponent(code)}`);
-        return toast.error(`No product with barcode ${code}`);
+        return toast.error(`No product with barcode ${code}`, { description: "Nothing was added." });
       }
       deliver(code);
     },

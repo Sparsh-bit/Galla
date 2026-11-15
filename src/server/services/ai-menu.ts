@@ -2,7 +2,7 @@ import "server-only";
 import sharp from "sharp";
 import { extractText, getDocumentProxy } from "unpdf";
 import { env } from "@/env";
-import { AI_MAX_BYTES, AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
+import { AI_MAX_BYTES, AI_MAX_ROWS, looksLikeProductName, type AiRow } from "@/lib/ai-menu";
 import { UNITS } from "@/lib/units";
 import { AppError } from "../context";
 import { groqTextModel, groqVisionModel, stripThinking } from "./groq-models";
@@ -71,7 +71,7 @@ export const aiMenuEnabled = () => !!(env.GROQ_API_KEY || env.ANTHROPIC_API_KEY)
 
 const RAW_ITEM = (it: Record<string, unknown>): AiRow | null => {
   const name = text(it.name, 200);
-  if (!name) return null;
+  if (!name || !looksLikeProductName(name)) return null; // unidentified: not offered
   const unit = typeof it.unit === "string" && UNIT_CODES.includes(it.unit) ? it.unit : "pcs";
   return { name, variant: text(it.variant, 120), category: text(it.category, 80), unit, price: rupees(it.price), cost: rupees(it.cost), tax_rate: rupees(it.tax_percent) };
 };
@@ -200,12 +200,6 @@ export async function readMenu(bytes: Buffer, mime: string): Promise<{ rows: AiR
   const json = (await res.json()) as { content?: { type: string; input?: { items?: unknown[]; note?: unknown } }[] };
   const input = json.content?.find((b) => b.type === "tool_use")?.input;
   const items = Array.isArray(input?.items) ? input.items.slice(0, AI_MAX_ROWS) : [];
-  const rows: AiRow[] = [];
-  for (const it of items as Record<string, unknown>[]) {
-    const name = text(it.name, 200);
-    if (!name) continue;
-    const unit = typeof it.unit === "string" && UNIT_CODES.includes(it.unit) ? it.unit : "pcs";
-    rows.push({ name, variant: text(it.variant, 120), category: text(it.category, 80), unit, price: rupees(it.price), cost: rupees(it.cost), tax_rate: rupees(it.tax_percent) });
-  }
+  const rows = items.map((it) => RAW_ITEM(it as Record<string, unknown>)).filter((r): r is AiRow => !!r); // unidentified lines are dropped
   return { rows, note: text(input?.note, 300) };
 }

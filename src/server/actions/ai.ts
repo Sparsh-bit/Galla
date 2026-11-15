@@ -2,8 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { z } from "zod";
-import { AI_MAX_ROWS, type AiRow } from "@/lib/ai-menu";
-import { allowed, loadCtx } from "../context";
+import { AI_MAX_ROWS, looksLikeProductName, type AiRow } from "@/lib/ai-menu";
+import { allowed, AppError, loadCtx } from "../context";
 import { connectDb } from "../db";
 import { RateLimit } from "../models";
 import { chatReply } from "../services/ai-chat";
@@ -57,7 +57,9 @@ const row = z.object({
 
 /** Step 2: the reviewed rows become products (same checks as the Excel import). A missing cost price is fine. */
 export const addMenuProducts = withAuth("products:write", z.object({ rows: z.array(row).min(1).max(AI_MAX_ROWS) }).strict(), async (ctx, { rows }) => {
-  const res = await applyImport(ctx, "products", rows, { shortNumbers: true, trackStock: false }) // menu items: no barcode, no stock;
+  const identified = rows.filter((r) => looksLikeProductName(r.name)); // unidentified lines are never added
+  if (!identified.length) throw new AppError("INVALID", "None of those lines is a readable product name, so nothing was added.");
+  const res = await applyImport(ctx, "products", identified, { shortNumbers: true, trackStock: false }); // menu items: no barcode, no stock
   revalidatePath("/products");
   return res;
 });
