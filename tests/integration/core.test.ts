@@ -564,3 +564,24 @@ describe("regression tests for the bug sweep", () => {
     expect(entry!.date.toISOString().slice(0, 10)).toBe("2026-01-10");
   });
 });
+
+describe("items that do not keep stock (no barcode: menu items, services)", () => {
+  it("can always be sold, never change stock, and stay out of low stock", async () => {
+    const c = ctx();
+    const locationId = await business(c);
+    const { variantId, productId } = await product(c, 0, { name: "Thali", trackStock: false, reorderLevel: 5 } as never);
+    // Stock is 0 and nothing is tracked: selling 3 must work.
+    const res = await svc.sales.completeSale(c, cashSale(locationId, variantId, 3, 3000));
+    expect(res.saleId).toBeTruthy();
+    expect(await svc.models.StockLevel.countDocuments({ orgId: c.orgId, variantId })).toBe(0);
+    expect(await svc.models.StockMove.countDocuments({ orgId: c.orgId, productId })).toBe(0);
+    expect((await svc.reports.lowStock(c, 100)).some((r) => String(r.variantId) === variantId)).toBe(false);
+  });
+
+  it("a normal item still runs out", async () => {
+    const c = ctx();
+    const locationId = await business(c);
+    const { variantId } = await product(c, 1);
+    await expect(svc.sales.completeSale(c, cashSale(locationId, variantId, 2, 2000))).rejects.toThrow(/only 1|out of stock|in stock/i);
+  });
+});

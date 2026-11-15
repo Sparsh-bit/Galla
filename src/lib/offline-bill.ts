@@ -119,13 +119,13 @@ export function buildOfflineBill(o: OfflineBillInput): { number: string; total: 
 }
 
 /** The till's catalogue after a sale: less stock, sold serials gone (so the next offline bill sees them). */
-export function applyOfflineSale<S extends { variants: { variantId: string; stock: number }[]; serials: { serial: string }[] }>(snapshot: S, lines: { hit: { variantId: string }; qty: number; serials: string[] }[]): S {
+export function applyOfflineSale<S extends { variants: { variantId: string; stock: number; trackStock?: boolean }[]; serials: { serial: string }[] }>(snapshot: S, lines: { hit: { variantId: string }; qty: number; serials: string[] }[]): S {
   const sold = new Set(lines.flatMap((l) => l.serials));
   const qty = new Map<string, number>();
   for (const l of lines) qty.set(l.hit.variantId, (qty.get(l.hit.variantId) ?? 0) + l.qty);
   return {
     ...snapshot,
-    variants: snapshot.variants.map((v) => (qty.has(v.variantId) ? { ...v, stock: v.stock - qty.get(v.variantId)! } : v)),
+    variants: snapshot.variants.map((v) => (qty.has(v.variantId) && v.trackStock !== false ? { ...v, stock: v.stock - qty.get(v.variantId)! } : v)),
     serials: snapshot.serials.filter((x) => !sold.has(x.serial)),
   };
 }

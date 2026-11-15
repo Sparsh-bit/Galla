@@ -34,7 +34,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
   let variantFilter: Set<string> | null = null;
   if (low) variantFilter = new Set((await lowStock(ctx, 2000)).map((r) => String(r.variantId)));
 
-  const pFilter: Record<string, unknown> = { orgId: ctx.orgId, active: true };
+  const pFilter: Record<string, unknown> = { orgId: ctx.orgId, active: true, trackStock: { $ne: false } };
   if (q) {
     const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
     pFilter.$or = [{ name: rx }, { "variants.sku": rx }, { "variants.barcodes": q }];

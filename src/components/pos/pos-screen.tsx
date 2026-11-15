@@ -447,9 +447,11 @@ export function PosScreen({ locations, quick, config }: { locations: { id: strin
                       </span>
                       <span className="mt-auto flex items-end justify-between gap-1 pt-1">
                         <span className="font-semibold tabular-nums">{org.money(h.salePrice)}</span>
-                        <span className={`text-xs tabular-nums ${h.stock <= 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                          {formatQty(h.stock, h.scale)} {h.unit}
-                        </span>
+                        {h.trackStock !== false && (
+                          <span className={`text-xs tabular-nums ${h.stock <= 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {formatQty(h.stock, h.scale)} {h.unit}
+                          </span>
+                        )}
                       </span>
                     </span>
                   </button>

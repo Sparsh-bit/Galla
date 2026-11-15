@@ -50,7 +50,7 @@ export function validate(kind: ImportKind, rows: RawRow[]) {
  * `shortNumbers`: every new item without a barcode gets the smallest unused number from 1 to 999 (in the order of the
  * rows), so it can be typed on the number pad at the counter. Numbers already used as a barcode or SKU are skipped.
  */
-export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[], opts: { shortNumbers?: boolean } = {}) {
+export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[], opts: { shortNumbers?: boolean; trackStock?: boolean } = {}) {
   const failed: RowError[] = [...validate(kind, rows).errors];
   let created = 0;
   let updated = 0;
@@ -133,7 +133,7 @@ export async function applyImport(ctx: Ctx, kind: ImportKind, rows: RawRow[], op
         }
         await createProduct(ctx, {
           name: first.name, description: "", brand: first.brand, categoryId: await categoryId(first.category), unitCode: first.unit, unitScale: first.scale, hsn: first.hsn,
-          taxRateId: await rateId(first.taxRateBp), priceIncludesTax: settings?.pricesIncludeTax ?? true, trackBatch: false, trackSerial: false, warrantyMonths: 0, reorderLevel: first.reorder, images: [], active: true,
+          taxRateId: await rateId(first.taxRateBp), priceIncludesTax: settings?.pricesIncludeTax ?? true, trackBatch: false, trackSerial: false, trackStock: opts.trackStock ?? true, warrantyMonths: 0, reorderLevel: first.reorder, images: [], active: true,
           openingLocationId: loc ? String(loc._id) : undefined,
           variants: group.map((r) => {
             const n = !r.barcode && opts.shortNumbers ? takeNumber() : null;

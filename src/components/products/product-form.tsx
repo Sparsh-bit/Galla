@@ -69,6 +69,8 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
   const [unitCode, setUnitCode] = useState(product?.unitCode ?? "pcs");
   const [trackBatch, setTrackBatch] = useState(product?.trackBatch ?? false);
   const [trackSerial, setTrackSerial] = useState(product?.trackSerial ?? false);
+  // Stock is kept only for items that have a barcode. Menu items and services: switch off, and they can always be sold.
+  const [trackStock, setTrackStock] = useState(product?.trackStock ?? true);
   const [warranty, setWarranty] = useState(product?.warrantyMonths ? String(product.warrantyMonths) : "");
   const [reorder, setReorder] = useState(String(product?.reorderLevel ?? ""));
   const [images, setImages] = useState<string[]>(product?.images ?? []);
@@ -158,7 +160,7 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
     }
     const data: ProductInput = {
       name, description, brand, categoryId: categoryId === "none" ? null : categoryId, unitCode: unit.code, unitScale: unit.scale, hsn: hsn.trim(),
-      taxRateId: taxRateId === "none" ? null : taxRateId, priceIncludesTax: inclusive, trackBatch, trackSerial, warrantyMonths: Number(warranty) || 0, reorderLevel: Number(reorder) || 0, images, active: product?.active ?? true,
+      taxRateId: taxRateId === "none" ? null : taxRateId, priceIncludesTax: inclusive, trackBatch: trackStock && trackBatch, trackSerial: trackStock && trackSerial, trackStock, warrantyMonths: Number(warranty) || 0, reorderLevel: Number(reorder) || 0, images, active: product?.active ?? true,
       variants, openingLocationId: isEdit ? undefined : openingLocationId || undefined,
     };
     run({ id: product?.id ?? null, data }, {
@@ -275,12 +277,12 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
                     <FormField label="Barcode / product no." error={err(`variants.${i}.barcodes.0`)} className="col-span-2 @md:col-span-1">
                       <BarcodeInput value={r.barcodes} onChange={(e) => setRow(r.key, { barcodes: e.target.value })} onScan={(code) => setRow(r.key, { barcodes: code })} onPickNumber={async () => { const n = await nextProductNumber({}); if (n.ok) setRow(r.key, { barcodes: n.data.number }); else toast.error(n.error); }} />
                     </FormField>
-                    {!isEdit && (
+                    {!isEdit && trackStock && (
                       <FormField label={`Opening stock (${unit.code})`} className="col-span-2 @md:col-span-1">
                         <Input inputMode="decimal" value={r.opening} onChange={(e) => setRow(r.key, { opening: e.target.value })} placeholder="0" disabled={trackSerial} />
                       </FormField>
                     )}
-                    {!isEdit && trackBatch && (
+                    {!isEdit && trackStock && trackBatch && (
                       <>
                         <FormField label="Batch no." className="col-span-1">
                           <Input value={r.batchNo} onChange={(e) => setRow(r.key, { batchNo: e.target.value })} placeholder="e.g. B2610" maxLength={64} className="font-mono" required={!!r.opening.trim() && r.opening.trim() !== "0"} />
@@ -365,18 +367,25 @@ export function ProductForm({ product, categories, taxRates, locations, defaults
                 <Input inputMode="numeric" value={reorder} onChange={(e) => setReorder(e.target.value.replace(/\D/g, ""))} placeholder="0" />
               </FormField>
               <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="trackstock" className="flex flex-col items-start gap-0.5 font-normal">
+                  Keep stock of this item
+                  <span className="text-xs text-muted-foreground">Turn off for items with no barcode, like menu items or services: no stock is kept and they can always be sold.</span>
+                </Label>
+                <Switch id="trackstock" checked={trackStock} onCheckedChange={(v) => { setTrackStock(v); if (!v) { setTrackBatch(false); setTrackSerial(false); } }} />
+              </div>
+              <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="batch" className="flex flex-col items-start gap-0.5 font-normal">
                   Track batches & expiry
                   <span className="text-xs text-muted-foreground">{org.has("batches") ? "For medicines, food and cosmetics." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit || !org.has("batches")} />
+                <Switch id="batch" checked={trackBatch} onCheckedChange={(v) => { setTrackBatch(v); if (v) setTrackSerial(false); }} disabled={isEdit || !trackStock || !org.has("batches")} />
               </div>
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="serial" className="flex flex-col items-start gap-0.5 font-normal">
                   Track serial numbers / IMEI
                   <span className="text-xs text-muted-foreground">{org.has("serials") ? "Phones, electronics, appliances. Each unit is scanned in and out." : "Not in your plan. Ask Concilio Solutions to add it."}</span>
                 </Label>
-                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit || !org.has("serials")} />
+                <Switch id="serial" checked={trackSerial} onCheckedChange={(v) => { setTrackSerial(v); if (v) { setTrackBatch(false); setUnitCode("pcs"); setRows((rs) => rs.map((r) => ({ ...r, opening: "" }))); } }} disabled={isEdit || !trackStock || !org.has("serials")} />
               </div>
               {trackSerial && (
                 <FormField label="Warranty (months)" optional description="Shown on serial lookups so you can check warranty claims.">

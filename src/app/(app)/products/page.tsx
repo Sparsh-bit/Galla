@@ -152,9 +152,13 @@ export default async function ProductsPage({ searchParams }: PageProps<"/product
                     <TableCell className="hidden lg:table-cell">{p.categoryId ? catName.get(String(p.categoryId)) : <span className="text-muted-foreground">—</span>}</TableCell>
                     <TableCell className="text-right tabular-nums">{min === max ? money(min) : `${money(min)} – ${money(max)}`}</TableCell>
                     <TableCell className="pr-4 text-right">
-                      <Badge variant={qty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={`tabular-nums ${low && qty > 0 ? "border-warning text-warning-foreground dark:text-warning" : ""}`}>
-                        {formatQty(qty, p.unit?.scale)} {p.unit?.code}
-                      </Badge>
+                      {p.trackStock === false ? (
+                        <span className="text-xs text-muted-foreground">No stock kept</span>
+                      ) : (
+                        <Badge variant={qty <= 0 ? "destructive" : low ? "outline" : "secondary"} className={`tabular-nums ${low && qty > 0 ? "border-warning text-warning-foreground dark:text-warning" : ""}`}>
+                          {formatQty(qty, p.unit?.scale)} {p.unit?.code}
+                        </Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

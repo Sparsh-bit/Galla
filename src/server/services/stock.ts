@@ -19,9 +19,14 @@ export interface MoveInput {
  * The only way stock changes. Decrements are conditional (`qty >= n`) so concurrent
  * sales can never take the same last unit; callers run this inside a transaction.
  */
-export async function applyMoves(ctx: Ctx, moves: MoveInput[], session: ClientSession, opts: { allowNegative?: boolean; flagShort?: boolean } = {}): Promise<string[]> {
+export async function applyMoves(ctx: Ctx, allMoves: MoveInput[], session: ClientSession, opts: { allowNegative?: boolean; flagShort?: boolean } = {}): Promise<string[]> {
   // flagShort: the sale already happened (offline) — record it, but report variants that went short.
+  let moves = allMoves;
   const short: string[] = [];
+  // Items that do not track stock (menu items, services) never change stock and can never run out.
+  const ids = [...new Set(allMoves.map((m) => m.productId))];
+  const untracked = new Set((await Product.find({ orgId: ctx.orgId, _id: { $in: ids }, trackStock: false }, { _id: 1 }, { session }).lean()).map((p) => String(p._id)));
+  if (untracked.size) moves = moves.filter((m) => !untracked.has(String(m.productId)));
   for (const m of moves) {
     if (m.qtyDelta === 0) continue;
     const key = { orgId: ctx.orgId, locationId: m.locationId, variantId: m.variantId, batchId: m.batchId ?? null };

@@ -17,7 +17,7 @@ export function CartLineRow({ line, total, locationId, allowNegative, onChange, 
   const org = useOrg();
   const { hit } = line;
   const step = hit.scale; // one whole unit
-  const short = !allowNegative && line.qty > hit.stock;
+  const short = hit.trackStock !== false && !allowNegative && line.qty > hit.stock; // untracked items never run out
   return (
     <li className="group flex gap-3 px-3 py-2.5">
       <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border bg-muted">
@@ -137,7 +137,7 @@ function LineEditor({ line, locationId, onChange, onRemove, children }: { line: 
               />
             </div>
           )}
-          {line.hit.mrp > 0 && <p className="text-xs text-muted-foreground">MRP {org.money(line.hit.mrp)} · Stock {formatQty(line.hit.stock, line.hit.scale)} {line.hit.unit}</p>}
+          {line.hit.mrp > 0 && <p className="text-xs text-muted-foreground">MRP {org.money(line.hit.mrp)}{line.hit.trackStock !== false && <> · Stock {formatQty(line.hit.stock, line.hit.scale)} {line.hit.unit}</>}</p>}
           <div className="flex gap-2">
             <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => { onRemove(); setOpen(false); }}>
               <Trash2 /> Remove

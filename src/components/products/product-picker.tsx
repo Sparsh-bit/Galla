@@ -51,7 +51,7 @@ export function ProductPicker({ onPick, locationId, placeholder = "Search produc
                   </span>
                   <span className="text-right text-xs">
                     <span className="block tabular-nums font-medium">{org.money(h.salePrice)}</span>
-                    <span className={`block tabular-nums ${h.stock <= 0 ? "text-destructive" : "text-muted-foreground"}`}>{formatQty(h.stock, h.scale)} {h.unit}</span>
+                    {h.trackStock !== false && <span className={`block tabular-nums ${h.stock <= 0 ? "text-destructive" : "text-muted-foreground"}`}>{formatQty(h.stock, h.scale)} {h.unit}</span>}
                   </span>
                 </CommandItem>
               ))}

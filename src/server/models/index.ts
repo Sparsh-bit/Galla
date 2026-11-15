@@ -128,6 +128,8 @@ const productSchema = new Schema(
     priceIncludesTax: { type: Boolean, default: true },
     trackBatch: { type: Boolean, default: false },
     trackSerial: { type: Boolean, default: false },
+    // false for items with no barcode (menu items, services): no stock is kept and they can always be sold.
+    trackStock: { type: Boolean, default: true },
     warrantyMonths: { type: Number, default: 0, min: 0, max: 600 },
     reorderLevel: { type: Number, default: 0, min: 0 },
     images: { type: [String], default: [] },

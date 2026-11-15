@@ -43,4 +43,8 @@ test("AI import: a menu photo becomes editable products with prices and no cost 
   await expect(pad.getByText("Masala Chai")).toBeVisible();
   await pad.getByRole("button", { name: /Next/ }).click();
   await expect(pad.getByText("Added: Masala Chai")).toBeVisible();
+
+  // Menu items have no barcode, so no stock is kept: they show it, and they sell without any stock.
+  await page.goto("/products?q=Masala");
+  await expect(page.getByRole("row", { name: /Masala Chai/ }).getByText("No stock kept")).toBeVisible();
 });

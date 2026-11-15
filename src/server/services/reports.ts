@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import type { PipelineStage } from "mongoose";
 import type { Ctx } from "../context";
 import { suggestQty, type ReorderGroup } from "@/lib/reorder";
@@ -157,9 +158,9 @@ export async function stockValuation(ctx: Ctx, locationId?: string) {
   return { items, costTotal: items.reduce((a, i) => a + i.costValue, 0), saleTotal: items.reduce((a, i) => a + i.saleValue, 0) };
 }
 
-export async function lowStock(ctx: Ctx, limit = 100) {
+async function lowStockUncached(ctx: Ctx, limit = 100) {
   return Product.aggregate<{ productId: Types.ObjectId; variantId: Types.ObjectId; name: string; variantName: string; sku: string; reorderLevel: number; qty: number; scale: number; unit: string }>([
-    { $match: { orgId: oid(ctx.orgId), active: true, reorderLevel: { $gt: 0 } } },
+    { $match: { orgId: oid(ctx.orgId), active: true, reorderLevel: { $gt: 0 }, trackStock: { $ne: false } } },
     { $unwind: "$variants" },
     { $match: { "variants.active": true } },
     { $lookup: { from: "stocklevels", let: { v: "$variants._id" }, pipeline: [{ $match: { $expr: { $and: [{ $eq: ["$orgId", oid(ctx.orgId)] }, { $eq: ["$variantId", "$$v"] }] } } }, { $group: { _id: null, qty: { $sum: "$qty" } } }], as: "s" } },
@@ -174,6 +175,9 @@ export async function lowStock(ctx: Ctx, limit = 100) {
  * Low-stock items grouped by the supplier they were last bought from (so one WhatsApp message per
  * supplier). Items never purchased through Galla go in a "No supplier yet" group.
  */
+/** The dashboard, inventory page and reorder list ask for this several times per request: compute it once. */
+export const lowStock = cache(lowStockUncached);
+
 export async function reorderList(ctx: Ctx): Promise<ReorderGroup[]> {
   const low = await lowStock(ctx, 2000);
   if (!low.length) return [];

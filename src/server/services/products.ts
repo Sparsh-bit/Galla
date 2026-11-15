@@ -42,7 +42,7 @@ function fields(input: Input) {
   return {
     name: input.name, description: input.description, categoryId: input.categoryId, brand: input.brand,
     unit: { code: input.unitCode, scale: input.unitScale }, hsn: input.hsn, taxRateId: input.taxRateId,
-    priceIncludesTax: input.priceIncludesTax, trackBatch: input.trackBatch, trackSerial: input.trackSerial, warrantyMonths: input.warrantyMonths, reorderLevel: input.reorderLevel,
+    priceIncludesTax: input.priceIncludesTax, trackBatch: input.trackBatch, trackSerial: input.trackSerial, trackStock: input.trackStock !== false, warrantyMonths: input.warrantyMonths, reorderLevel: input.reorderLevel,
     images: input.images, active: input.active,
   };
 }
@@ -52,7 +52,7 @@ export async function createProduct(ctx: Ctx, input: Input) {
   return inTransaction(async (session) => {
     const variants = await prepareVariants(ctx, input, session);
     const [p] = await Product.create([{ orgId: ctx.orgId, ...fields(input), variants }], { session });
-    const opening = input.variants.map((v, i) => ({ v, id: variants[i]._id })).filter((x) => x.v.openingQty > 0);
+    const opening = input.trackStock !== false ? input.variants.map((v, i) => ({ v, id: variants[i]._id })).filter((x) => x.v.openingQty > 0) : []; // no stock kept for untracked items
     if (opening.length) {
       if (input.trackSerial) throw new AppError("INVALID", "Add stock for serial-numbered items through a purchase or a stock adjustment so each serial is recorded.");
       const loc = input.openingLocationId
@@ -126,6 +126,8 @@ export interface VariantHit {
   hsn: string;
   trackBatch: boolean;
   trackSerial: boolean;
+  /** False: no stock is kept for this item and it can always be sold. */
+  trackStock: boolean;
   warrantyMonths: number;
   /** Set when the scanned code was a specific serial number. */
   serial?: string;
@@ -135,15 +137,19 @@ export interface VariantHit {
 
 async function toHits(ctx: Ctx, products: ProductDoc[], locationId?: string, onlyVariant?: string): Promise<VariantHit[]> {
   const taxIds = [...new Set(products.map((p) => p.taxRateId && String(p.taxRateId)).filter(Boolean))] as string[];
-  const rates = new Map((await TaxRate.find({ orgId: ctx.orgId, _id: { $in: taxIds } }).lean()).map((r) => [String(r._id), r]));
   const pairs = products.flatMap((p) => p.variants.filter((v) => v.active && (!onlyVariant || String(v._id) === onlyVariant)).map((v) => ({ p, v })));
-  const stock = await stockByVariant(ctx, pairs.map(({ v }) => String(v._id)), locationId);
+  // Tax rates and stock are independent: ask for both at once (one round trip instead of two).
+  const [rateDocs, stock] = await Promise.all([
+    taxIds.length ? TaxRate.find({ orgId: ctx.orgId, _id: { $in: taxIds } }).lean() : Promise.resolve([]),
+    stockByVariant(ctx, pairs.filter(({ p }) => p.trackStock !== false).map(({ v }) => String(v._id)), locationId),
+  ]);
+  const rates = new Map(rateDocs.map((r) => [String(r._id), r]));
   return pairs.map(({ p, v }) => {
     const r = p.taxRateId ? rates.get(String(p.taxRateId)) : undefined;
     return {
       productId: String(p._id), variantId: String(v._id), name: p.name, variantName: v.name ?? "", sku: v.sku, barcode: v.barcodes[0] ?? "",
       salePrice: v.salePrice, mrp: v.mrp ?? 0, costPrice: v.costPrice ?? 0, rateBp: r?.rateBp ?? 0, cessBp: r?.cessBp ?? 0,
-      inclusive: p.priceIncludesTax, unit: p.unit?.code ?? "pcs", scale: p.unit?.scale ?? 1, hsn: p.hsn ?? "", trackBatch: p.trackBatch, trackSerial: !!p.trackSerial, warrantyMonths: p.warrantyMonths ?? 0,
+      inclusive: p.priceIncludesTax, unit: p.unit?.code ?? "pcs", scale: p.unit?.scale ?? 1, hsn: p.hsn ?? "", trackBatch: p.trackBatch, trackSerial: !!p.trackSerial, trackStock: p.trackStock !== false, warrantyMonths: p.warrantyMonths ?? 0,
       stock: stock.get(String(v._id)) ?? 0, image: p.images?.[0] ?? null,
     };
   });

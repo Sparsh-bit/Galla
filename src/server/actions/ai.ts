@@ -57,7 +57,7 @@ const row = z.object({
 
 /** Step 2: the reviewed rows become products (same checks as the Excel import). A missing cost price is fine. */
 export const addMenuProducts = withAuth("products:write", z.object({ rows: z.array(row).min(1).max(AI_MAX_ROWS) }).strict(), async (ctx, { rows }) => {
-  const res = await applyImport(ctx, "products", rows, { shortNumbers: true });
+  const res = await applyImport(ctx, "products", rows, { shortNumbers: true, trackStock: false }) // menu items: no barcode, no stock;
   revalidatePath("/products");
   return res;
 });

@@ -163,7 +163,7 @@ export async function listStock(ctx: Ctx, q: Query) {
   need(ctx, "stock:read");
   const p = page(q);
   const locationId = isId(q.location) ? q.location : null;
-  const filter: Record<string, unknown> = { orgId: ctx.orgId, active: true };
+  const filter: Record<string, unknown> = { orgId: ctx.orgId, active: true, trackStock: { $ne: false } }; // untracked items have no stock to list
   const s = text(q.q, 60);
   if (s) filter.$or = [{ name: rx(s) }, { "variants.sku": rx(s) }, { "variants.barcodes": s }];
   if (q.filter === "low") filter["variants._id"] = { $in: (await lowStock(ctx, 2000)).map((r) => r.variantId) };

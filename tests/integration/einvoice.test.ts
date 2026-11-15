@@ -41,7 +41,7 @@ describe("GST e-invoice via the NIC API", () => {
     const loc = String((await models.Location.findOne({ orgId: ctx.orgId }).lean())!._id);
     const rate = String((await models.TaxRate.findOne({ orgId: ctx.orgId, rateBp: 1800 }).lean())!._id);
     const { id: productId } = await products.createProduct(ctx, {
-      name: "Steel Almirah", description: "", categoryId: null, brand: "", unitCode: "pcs", unitScale: 1, hsn: "94032010", taxRateId: rate, priceIncludesTax: true, trackBatch: false, trackSerial: false, warrantyMonths: 0,
+      name: "Steel Almirah", description: "", categoryId: null, brand: "", unitCode: "pcs", unitScale: 1, hsn: "94032010", taxRateId: rate, priceIncludesTax: true, trackBatch: false, trackSerial: false, trackStock: true, warrantyMonths: 0,
       reorderLevel: 0, images: [], active: true, variants: [{ name: "", sku: "ALM", barcodes: ["111"], attributes: [], costPrice: 0, salePrice: 1180000, mrp: 0, active: true, openingQty: 5 }],
     });
     const variantId = String((await models.Product.findOne({ orgId: ctx.orgId, _id: productId }).lean())!.variants[0]._id);
@@ -89,7 +89,7 @@ describe("GST e-invoice via the NIC API", () => {
     await einv.saveEinvoiceSettings(ctx, { enabled: true, environment: "sandbox", baseUrl: nic.url, paths: { auth: "/eivital/v1.04/auth", invoice: "/eicore/v1.03/Invoice", cancel: "/eicore/v1.03/Invoice/Cancel", ewb: "/eiewb/v1.03/ewaybill" }, ...MOCK_CREDENTIALS, publicKey: nic.publicKey });
     const loc = String((await models.Location.findOne({ orgId: ctx.orgId }).lean())!._id);
     const { id: productId } = await products.createProduct(ctx, {
-      name: "Thing", description: "", categoryId: null, brand: "", unitCode: "pcs", unitScale: 1, hsn: "", taxRateId: null, priceIncludesTax: true, trackBatch: false, trackSerial: false, warrantyMonths: 0,
+      name: "Thing", description: "", categoryId: null, brand: "", unitCode: "pcs", unitScale: 1, hsn: "", taxRateId: null, priceIncludesTax: true, trackBatch: false, trackSerial: false, trackStock: true, warrantyMonths: 0,
       reorderLevel: 0, images: [], active: true, variants: [{ name: "", sku: "T1", barcodes: ["222"], attributes: [], costPrice: 0, salePrice: 1000, mrp: 0, active: true, openingQty: 5 }],
     });
     const variantId = String((await models.Product.findOne({ orgId: ctx.orgId, _id: productId }).lean())!.variants[0]._id);
